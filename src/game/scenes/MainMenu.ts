@@ -26,7 +26,17 @@ export class MainMenu extends Scene
             align: 'center'
         }).setOrigin(0.5).setDepth(100);
 
+
+        const startButton = this.add.text(300, 400, 'スタート', { fontSize: '32px', color: '#00f' })
+          .setOrigin(0.5)
+          .setInteractive();
+    
+        startButton.on('pointerdown', () => {
+          this.scene.start('GameScene');
+        });
+
         EventBus.emit('current-scene-ready', this);
+
     }
     
     changeScene ()
