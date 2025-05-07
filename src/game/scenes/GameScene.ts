@@ -55,7 +55,7 @@ export class GameScene extends Scene
 
         const cardGen = this.generateShuffledPairs(this.numAllPair); // 6ペア（計12枚）
     
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < this.numAllPair*teams.length; i++) {
         //   const card = new Card(this, 0, 0, i); // 位置はあとでTableで決める
         //   card.setDisplaySize(cardWidth, cardHeight);
         //   cards.push(card);
