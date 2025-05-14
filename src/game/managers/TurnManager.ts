@@ -20,7 +20,7 @@ export class TurnManager {
 
   endMyTurn() {
     this.isMyTurn = false;
-    this.apiClient.sendMyMove(); // 自分の行動をサーバーに送信
+    // this.apiClient.sendMyMove(); // 自分の行動をサーバーに送信
     this.uiManager.showOpponentTurnUI();
     this.waitForOpponent();
   }
