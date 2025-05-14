@@ -53,4 +53,18 @@ export class Table {
       this.cards[i].setPosition(x, y);
     }
   }
+
+  setInteractive(interactive: boolean = true) {
+    this.cards.forEach(card => {
+      if (interactive) {
+        card.setInteractive();
+      } else {
+        card.disableInteractive();
+      }
+    });
+  }
+
+  getCards(): Card[] {
+    return this.cards;
+  }
 }
