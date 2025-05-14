@@ -47,7 +47,7 @@ export class MainMenu extends Scene
             this.logoTween = null;
         }
 
-        this.scene.start('Game');
+        this.scene.start('GameStart');
     }
 
     moveLogo (reactCallback: ({ x, y }: { x: number, y: number }) => void)

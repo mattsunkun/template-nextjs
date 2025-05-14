@@ -1,5 +1,6 @@
 import { Scene } from 'phaser';
 import { EventBus } from '../EventBus';
+import { CPUClient } from '../clients/CPUClient';
 import { GameClient } from '../clients/GameClient';
 import { Card } from '../components/Card';
 import { Table } from '../components/Table';
@@ -22,10 +23,9 @@ export class GameScene extends Scene
     private camera: Phaser.Cameras.Scene2D.Camera;
     private gameText: Phaser.GameObjects.Text;
     private numAllPair: number = 10;
-    private gameClient: GameClient;
-    private opponentStatus: any;
+    private playerClient: GameClient;
+    private cpuClient: CPUClient;
     private table: Table;
-    private endTurnButton: Phaser.GameObjects.Text;
     private scoreText: Phaser.GameObjects.Text;
     private firstCard: Card | null = null;
     private secondCard: Card | null = null;
@@ -34,9 +34,14 @@ export class GameScene extends Scene
     private opponentScore: number = 0;
     private turnText: Phaser.GameObjects.Text;
 
-    constructor ()
+    constructor()
     {
         super('GameScene');
+    }
+
+    init(data: { roomId: string, playerClient: GameClient, cpuClient: CPUClient }) {
+        this.playerClient = data.playerClient;
+        this.cpuClient = data.cpuClient;
     }
 
     preload(){
@@ -54,15 +59,6 @@ export class GameScene extends Scene
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor(0x00ff00);
 
-        // GameClientの初期化（モックデータ）
-        const roomId = 'room1';
-        const myId = 'player1';
-        const opponentId = 'player2';
-        this.gameClient = new GameClient(roomId, myId, opponentId, true);
-        
-        // 対戦相手の状態を取得
-        this.opponentStatus = await this.gameClient.getOpponentStatus();
-        
         // イベントリスナーの設定
         this.setupEventListeners();
 
@@ -103,7 +99,7 @@ export class GameScene extends Scene
         // this.createEndTurnButton();
 
         // ゲーム開始
-        this.gameClient.startGame();
+        this.playerClient.startGame();
 
         EventBus.emit('current-scene-ready', this);
     }
@@ -129,21 +125,9 @@ export class GameScene extends Scene
     private setupEventListeners() {
         EventBus.on('turn-start', this.onTurnStart, this);
         EventBus.on('turn-end', this.onTurnEnd, this);
-    }
-
-    private createEndTurnButton() {
-        this.endTurnButton = this.add.text(700, 50, 'ターン終了', {
-            fontSize: '24px',
-            color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 10, y: 5 }
-        })
-        .setInteractive()
-        .on('pointerdown', () => {
-            if (this.gameClient.isCurrentTurn()) {
-                this.gameClient.endTurn();
-            }
-        });
+        EventBus.on('cpu-select-card', this.onCpuSelectCard, this);
+        EventBus.on('cpu-match-pair', this.onCpuMatchPair, this);
+        EventBus.on('cpu-mismatch-pair', this.onCpuMismatchPair, this);
     }
 
     private async onCardClicked(card: Card) {
@@ -180,7 +164,7 @@ export class GameScene extends Scene
                 this.firstCard.hide();
                 this.secondCard.hide();
                 // ターンをCPUに切り替え
-                this.gameClient.endTurn();
+                this.playerClient.endTurn();
             }
 
             this.firstCard = null;
@@ -195,7 +179,7 @@ export class GameScene extends Scene
 
     private handleGameClear() {
         const winner = this.score > this.opponentScore ? 'あなた' : 'CPU';
-        this.add.text(400, 300, `${winner}の勝利！`, {
+        this.add.text(this.scale.width / 2, this.scale.height / 2, `${winner}の勝利！`, {
             fontSize: '64px',
             color: '#ffffff',
             backgroundColor: '#000000',
@@ -214,17 +198,21 @@ export class GameScene extends Scene
 
     private async onTurnStart(data: { roomId: string, playerId: string, opponentId: string }) {
         console.log(`Turn started for player: ${data.playerId} in room: ${data.roomId}`);
-        if (data.playerId === this.gameClient.getMyId()) {
+        if (data.playerId === this.playerClient.getMyId()) {
             // プレイヤーのターン
             this.turnText.setText('あなたのターン');
             this.table.setInteractive(true);
         } else {
-            // 対戦相手のターン
+            // CPUのターン
             this.turnText.setText('CPUのターン');
             this.table.setInteractive(false);
-            // 対戦相手の手を取得して処理
-            const opponentMove = await this.gameClient.getOpponentMove();
-            await this.processOpponentMove(opponentMove);
+            
+            // 利用可能なカードをCPUに渡す
+            const cards = this.table.getCards();
+            this.cpuClient.setAvailableCards(cards);
+            
+            // CPUの行動を開始
+            await this.cpuClient.processMove();
         }
     }
 
@@ -238,58 +226,43 @@ export class GameScene extends Scene
         });
     }
 
-    private async processOpponentMove(move: any) {
+    private async onCpuSelectCard(data: { roomId: string, playerId: string, cardIndex: number, isFirstCard: boolean }) {
         const cards = this.table.getCards();
-        const availableCards = cards.filter(card => !card.isFaceUp() && !card.isPaired());
+        const card = cards[data.cardIndex];
         
-        if (availableCards.length >= 2) {
-            // 最初のカードを選択
-            const firstCard = availableCards[Math.floor(Math.random() * availableCards.length)];
-            firstCard.reveal();
-            await this.delay(500);
+        if (card) {
+            card.reveal();
+        }
+    }
 
-            // 2枚目のカードを選択
-            const secondCard = availableCards.find(card => 
-                card !== firstCard && !card.isFaceUp() && !card.isPaired()
-            );
-            if (secondCard) {
-                secondCard.reveal();
-                await this.delay(1000);
-
-                // ペアの判定
-                if (firstCard.getValue() === secondCard.getValue()) {
-                    this.opponentScore += 10;
-                    this.updateScoreText();
-                    firstCard.match();
-                    secondCard.match();
-
-                    // ゲームクリアチェック
-                    const allCards = this.table.getCards();
-                    const isGameClear = allCards.every(card => card.isPaired());
-                    if (isGameClear) {
-                        this.handleGameClear();
-                    } else {
-                        // 続けてCPUのターン
-                        this.gameClient.endTurn();
-                    }
-                } else {
-                    await this.delay(1000);
-                    firstCard.hide();
-                    secondCard.hide();
-                    // CPUがミスしたらプレイヤーのターンに直接切り替え
-                    EventBus.emit('turn-start', {
-                        roomId: this.gameClient.getRoomId(),
-                        playerId: this.gameClient.getMyId(),
-                        opponentId: this.gameClient.getOpponentId()
-                    });
-                }
+    private async onCpuMatchPair(data: { roomId: string, playerId: string, firstCardIndex: number, secondCardIndex: number }) {
+        const cards = this.table.getCards();
+        const firstCard = cards[data.firstCardIndex];
+        const secondCard = cards[data.secondCardIndex];
+        
+        if (firstCard && secondCard) {
+            this.opponentScore += 10;
+            this.updateScoreText();
+            
+            firstCard.match();
+            secondCard.match();
+            
+            // ゲームクリアチェック
+            const isGameClear = cards.every(card => card.isPaired());
+            if (isGameClear) {
+                this.handleGameClear();
             }
         }
     }
 
-    async sendMove(move: any) {
-        if (this.gameClient.isCurrentTurn()) {
-            await this.gameClient.sendMyMove(move);
+    private async onCpuMismatchPair(data: { roomId: string, playerId: string, firstCardIndex: number, secondCardIndex: number }) {
+        const cards = this.table.getCards();
+        const firstCard = cards[data.firstCardIndex];
+        const secondCard = cards[data.secondCardIndex];
+        
+        if (firstCard && secondCard) {
+            firstCard.hide();
+            secondCard.hide();
         }
     }
 
