@@ -2,15 +2,14 @@ import { Scene } from 'phaser';
 import { EventBus } from '../EventBus';
 import { CPUClient } from '../clients/CPUClient';
 import { GameClient } from '../clients/GameClient';
-import { Card } from '../components/Card';
-import { Table } from '../components/Table';
+import { Card } from '../components/MemoryCardComponent';
 
 import { tSize } from '@/utils/types';
-import { generateShuffledPairs } from '../servers/MockServer';
-
+import { PhaseManager } from '../managers/PhaseManager';
+import { TurnManager } from '../managers/TurnManager';
 export const teams = ["spade", "heart"];
 
-export type tCardGen = {
+export type tCardInfo = {
   pair: number;
   cost: number;
   attack: number;
@@ -18,30 +17,32 @@ export type tCardGen = {
   size: tSize;
 }
 
+export type tGameSceneData = {
+  roomId: string;
+  playerClient: GameClient;
+  opponentClient: CPUClient;
+  isMyTurn: boolean;
+}
+
 export class GameScene extends Scene
 {
-    private camera: Phaser.Cameras.Scene2D.Camera;
-    private gameText: Phaser.GameObjects.Text;
     private numAllPair: number = 10;
-    private playerClient: GameClient;
-    private cpuClient: CPUClient;
-    private table: Table;
-    private scoreText: Phaser.GameObjects.Text;
-    private firstCard: Card | null = null;
-    private secondCard: Card | null = null;
-    private isProcessing: boolean = false;
-    private score: number = 0;
-    private opponentScore: number = 0;
-    private turnText: Phaser.GameObjects.Text;
 
+    private camera: Phaser.Cameras.Scene2D.Camera;
+
+    private phaseManager: PhaseManager;
     constructor()
     {
         super('GameScene');
     }
 
-    init(data: { roomId: string, playerClient: GameClient, cpuClient: CPUClient }) {
-        this.playerClient = data.playerClient;
-        this.cpuClient = data.cpuClient;
+    init(data: tGameSceneData) {
+        this.phaseManager = new PhaseManager(
+            this, 
+            data.playerClient, 
+            data.opponentClient, 
+            new TurnManager(data.isMyTurn)
+        );
     }
 
     preload(){
@@ -61,66 +62,8 @@ export class GameScene extends Scene
 
         // イベントリスナーの設定
         this.setupEventListeners();
-
-        const margin = 15;
-    
-        const cards: Card[] = [];
-
-        const cardGen = generateShuffledPairs(this.numAllPair); // 6ペア（計12枚）
-    
-        for (let i = 0; i < this.numAllPair*teams.length; i++) {
-        //   const card = new Card(this, 0, 0, i); // 位置はあとでTableで決める
-        //   card.setDisplaySize(cardWidth, cardHeight);
-        //   cards.push(card);
-            // const x = (this.scale.width - cols*CARD_SIZE.width)/2 + (i % cols) * (CARD_SIZE.width + CARD_PADDING);
-            // const y = CARD_OFFEST_Y + Math.floor(i / cols) * (CARD_SIZE.height + CARD_PADDING);
-            const card = new Card(this, 0,0, cardGen[i]);
-    
-            card.on('cardClicked', this.onCardClicked, this);
-            cards.push(card);
-        }
-    
-        // 画面中央に盤面を配置
-        const screenWidth = this.scale.width;
-        const screenHeight = this.scale.height;
-        const tableWidth = 700;
-        const tableHeight = 400;
-        const tableX = (screenWidth - tableWidth) / 2;
-        const tableY = (screenHeight - tableHeight) / 2 + 50; // 上部に余白を設ける
-
-        this.table = new Table(this, cards, tableX, tableY, tableWidth, tableHeight, margin);
-
-        // スコア表示の作成（上部中央）
-        this.createScoreText();
-        // ターン表示の作成（上部中央）
-        this.createTurnText();
-
-        // // ターン終了ボタンの作成
-        // this.createEndTurnButton();
-
-        // ゲーム開始
-        this.playerClient.startGame();
-
-        EventBus.emit('current-scene-ready', this);
     }
 
-    private createScoreText() {
-        this.scoreText = this.add.text(this.scale.width / 2, 30, 'あなた: 0  CPU: 0', {
-            fontSize: '32px',
-            color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 10, y: 5 }
-        }).setOrigin(0.5);
-    }
-
-    private createTurnText() {
-        this.turnText = this.add.text(this.scale.width / 2, 80, 'あなたのターン', {
-            fontSize: '32px',
-            color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 10, y: 5 }
-        }).setOrigin(0.5);
-    }
 
     private setupEventListeners() {
         EventBus.on('turn-start', this.onTurnStart, this);
@@ -131,10 +74,10 @@ export class GameScene extends Scene
     }
 
     private async onCardClicked(card: Card) {
-        if (this.isProcessing || card.isFaceUp() || card.isPaired()) {
+        if (this.isProcessing) {
             return;
         }
-
+        
         card.reveal();
 
         if (!this.firstCard) {
@@ -209,10 +152,10 @@ export class GameScene extends Scene
             
             // 利用可能なカードをCPUに渡す
             const cards = this.table.getCards();
-            this.cpuClient.setAvailableCards(cards);
+            this.opponentClient.setAvailableCards(cards);
             
             // CPUの行動を開始
-            await this.cpuClient.processMove();
+            await this.opponentClient.processMove();
         }
     }
 

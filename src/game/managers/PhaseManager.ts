@@ -1,6 +1,9 @@
-import { EventBus } from '../EventBus';
-import { Card } from '../components/Card';
 
+import { CPUClient } from '../clients/CPUClient';
+import { GameClient } from '../clients/GameClient';
+import { Card } from '../components/MemoryCardComponent';
+import { EventBus } from '../EventBus';
+import { TurnManager } from './TurnManager';
 // ゲームフェーズを定義
 export enum GamePhase {
     COST_SUMMON_SPELL = 'cost-summon-spell', // コスト変換・キャラ召喚・呪文詠唱フェーズ
@@ -58,8 +61,15 @@ export class PhaseManager {
     private remainingPairs: number = 0;
     private playerMemoryGamePlayed: boolean = false; // プレイヤーが神経衰弱をプレイしたかどうか
     private cpuMemoryGamePlayed: boolean = false;    // CPUが神経衰弱をプレイしたかどうか
+    private scene: Phaser.Scene;
+    private scoreText: Phaser.GameObjects.Text;
+    private turnText: Phaser.GameObjects.Text;
 
-    constructor() {
+    private memoryPhaseManager: MemoryPhaseManager;
+    constructor(scene: Phaser.Scene, myClient:GameClient, opponentClient:CPUClient, turnManager:TurnManager) {
+        this.scene = scene;
+        this.createScoreText();
+        this.createTurnText();
         // プレイヤーとCPUの初期化
         this.player = this.initializePlayer('player');
         this.cpu = this.initializePlayer('cpu');
@@ -83,6 +93,30 @@ export class PhaseManager {
             life: 20,
             canConvertToCost: true
         };
+    }
+
+
+    private updateScoreText() {
+        this.scoreText.setText(`あなた: ${this.score}  CPU: ${this.opponentScore}`);
+    }
+
+
+    private createScoreText() {
+        this.scoreText = this.scene.add.text(this.scene.scale.width / 2, 30, 'あなた: 0  CPU: 0', {
+            fontSize: '32px',
+            color: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0.5);
+    }
+
+    private createTurnText() {
+        this.turnText = this.scene.add.text(this.scene.scale.width / 2, 80, 'あなたのターン', {
+            fontSize: '32px',
+            color: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0.5);
     }
 
     // キャラクターデッキの生成

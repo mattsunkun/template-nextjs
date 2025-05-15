@@ -1,18 +1,19 @@
-import { tCardGen } from "@/game/scenes/GameScene";
+import { tCard } from "@/game/scenes/GameScene";
+
 
 const DEBUG: boolean = true;
 
-export class Card extends Phaser.GameObjects.Container {
+export class MemoryCardComponent extends Phaser.GameObjects.Container {
     private frontImage: Phaser.GameObjects.Image;
     private backImage: Phaser.GameObjects.Image;
     private label: Phaser.GameObjects.Text;
     private isRevealed: boolean = false;
     private isMatched: boolean = false;
     public readonly value: number;
-    public readonly cardGen: tCardGen;
+    public readonly cardGen: tCard;
   
-    constructor(scene: Phaser.Scene, x: number, y: number, cardGen: tCardGen) {
-      super(scene, x, y);
+    constructor(scene: Phaser.Scene, cardGen: tCard) {
+      super(scene);
       this.value = cardGen.pair;
       this.cardGen = cardGen;
   

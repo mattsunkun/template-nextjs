@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { Card } from '../components/Card';
+import { Card } from '../components/MemoryCardComponent';
 import { EventBus } from '../EventBus';
 import { Character, GamePhase, PhaseManager, Player, SpellCard } from '../managers/PhaseManager';
 

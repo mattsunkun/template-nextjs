@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import { CPUClient } from '../clients/CPUClient';
 import { GameClient } from '../clients/GameClient';
-
+import { tGameSceneData } from './GameScene';
 export class GameStart extends Scene {
     private memoryGameButton: Phaser.GameObjects.Text;
     private cardGameButton: Phaser.GameObjects.Text;
@@ -40,25 +40,6 @@ export class GameStart extends Scene {
         .on('pointerout', () => {
             this.memoryGameButton.setStyle({ backgroundColor: '#000000' });
         });
-
-        // カードゲームボタン
-        this.cardGameButton = this.add.text(this.scale.width / 2, 350, 'カードバトル', {
-            fontSize: '32px',
-            color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 20, y: 10 }
-        })
-        .setOrigin(0.5)
-        .setInteractive()
-        .on('pointerdown', () => {
-            this.startCardGame();
-        })
-        .on('pointerover', () => {
-            this.cardGameButton.setStyle({ backgroundColor: '#333333' });
-        })
-        .on('pointerout', () => {
-            this.cardGameButton.setStyle({ backgroundColor: '#000000' });
-        });
     }
 
     private startMemoryGame() {
@@ -68,19 +49,18 @@ export class GameStart extends Scene {
         this.opponentId = `cpu_${Math.random().toString(36).substr(2, 9)}`;
 
         // プレイヤーとCPUのGameClientを生成
-        const playerClient = new GameClient(this.roomId, this.myId, this.opponentId, true);
+        const isMyTurn = Math.random() < 0.5;
+
+        const playerClient = new GameClient(this.roomId, this.myId, this.opponentId);
         const cpuClient = new CPUClient(this.roomId, this.opponentId, this.myId);
 
         // 通常の神経衰弱ゲームシーンに遷移
         this.scene.start('GameScene', {
             roomId: this.roomId,
             playerClient: playerClient,
-            cpuClient: cpuClient
-        });
+            opponentClient: cpuClient, 
+            isMyTurn: isMyTurn
+        } as tGameSceneData);
     }
 
-    private startCardGame() {
-        // カードバトルゲームシーンに遷移
-        this.scene.start('CardGameScene');
-    }
 } 

@@ -6,11 +6,10 @@ export class GameClient {
   private opponentId: string;
   private isMyTurn: boolean = false;
 
-  constructor(roomId: string, myId: string, opponentId: string, isMyTurn: boolean) {
+  constructor(roomId: string, myId: string, opponentId: string) {
     this.roomId = roomId;
     this.myId = myId;
     this.opponentId = opponentId;
-    this.isMyTurn = isMyTurn;
   }
 
   startGame() {

@@ -1,4 +1,4 @@
-import { Card } from '../components/Card';
+import { Card } from '../components/MemoryCardComponent';
 import { EventBus } from '../EventBus';
 import { GameClient } from './GameClient';
 
