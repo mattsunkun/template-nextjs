@@ -1,6 +1,4 @@
 import Phaser from 'phaser';
-import { CardGameScene } from './scenes/CardGameScene';
-import { GameOver } from './scenes/GameOver';
 import { GameScene } from './scenes/GameScene';
 import { GameStart } from './scenes/GameStart';
 
@@ -10,11 +8,11 @@ const config: Phaser.Types.Core.GameConfig = {
     width: 800,
     height: 600,
     backgroundColor: '#333333',
-    scene: [GameStart, GameScene, GameOver, CardGameScene],
+    scene: [GameStart, GameScene],
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 0 },
+            gravity: {x: 0, y: 0},
             debug: false
         }
     }
