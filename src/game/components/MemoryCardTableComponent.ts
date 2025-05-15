@@ -1,10 +1,9 @@
 // components/Table.ts
 import Phaser from 'phaser';
-import { tMemoryCard } from '../managers/MemoryPhaseManager';
-
+import { MemoryCardComponent } from './MemoryCardComponent';
 export class Table {
   private scene: Phaser.Scene;
-  private cards: tMemoryCard[];
+  private cards: MemoryCardComponent[];
   private x: number;
   private y: number;
   private width: number;
@@ -13,7 +12,7 @@ export class Table {
 
   constructor(
     scene: Phaser.Scene,
-    cards: tMemoryCard[],
+    cards: MemoryCardComponent[],
     x: number,
     y: number,
     width: number,
@@ -34,8 +33,8 @@ export class Table {
   private layoutCards() {
     if (this.cards.length === 0) return;
 
-    const cardWidth = this.cards[0].card.size.width;
-    const cardHeight = this.cards[0].card.size.height;
+    const cardWidth = this.cards[0].size.width;
+    const cardHeight = this.cards[0].size.height;
 
     const cols = Math.floor((this.width + this.margin) / (cardWidth + this.margin));
     const rows = Math.ceil(this.cards.length / cols);
@@ -50,21 +49,17 @@ export class Table {
       const x = offsetX + col * (cardWidth + this.margin) + cardWidth / 2;
       const y = offsetY + row * (cardHeight + this.margin) + cardHeight / 2;
 
-      this.cards[i].card.setPosition(x, y);
+      this.cards[i].setPosition(x, y);
     }
   }
 
   setInteractive(interactive: boolean = true) {
     this.cards.forEach(card => {
       if (interactive) {
-        card.card.setInteractive();
+        card.setInteractive();
       } else {
-        card.card.disableInteractive();
+        card.disableInteractive();
       }
     });
-  }
-
-  getCards(): tMemoryCard[] {
-    return this.cards;
   }
 }

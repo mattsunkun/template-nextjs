@@ -1,10 +1,38 @@
+import { TextLabel } from "../components/utils/TextLabel";
+import { GamePhase } from "./PhaseManager";
 
 export class TurnManager {
-  private _isMyTurn: boolean = false;
+  private _isMyTurn: boolean;
+  private readonly isFirstTurn: boolean;
+  public _currentPhase: GamePhase; // 神経衰弱フェーズから開始
 
-  constructor(isMyTurn: boolean) {
-    this._isMyTurn = isMyTurn;
+  private scene: Phaser.Scene;
+  private textLabelPhase: TextLabel;
+  private textLabelTurn: TextLabel;
+
+  constructor(scene: Phaser.Scene, isMyTurn: boolean) {
+    this.scene = scene;
+    this.createLabelText();
+
+    this.isMyTurn = isMyTurn;
+    this.isFirstTurn = isMyTurn;
+    this.currentPhase = GamePhase.MEMORY_GAME;
   }
+
+
+  createLabelText(){
+    this.textLabelPhase = new TextLabel(this.scene, this.scene.scale.width * 2/3, 30, '神経衰弱', {
+        fontSize: '32px',
+        color: '#ffffff',
+        backgroundColor: '#000000',
+    }).setOrigin(0.5);
+
+    this.textLabelTurn = new TextLabel(this.scene, this.scene.scale.width * 1/3, 30, 'ターン', {
+        fontSize: '32px',
+        color: '#ffffff',
+        backgroundColor: '#000000',
+    }).setOrigin(0.5);
+}
 
   public get isMyTurn(): boolean {
     return this._isMyTurn;
@@ -12,5 +40,39 @@ export class TurnManager {
 
   public set isMyTurn(isMyTurn: boolean) {
     this._isMyTurn = isMyTurn;
+    this.textLabelTurn.text = isMyTurn ? '自分のターン' : '相手のターン';
+  }
+
+  public get currentPhase(): GamePhase {
+    return this._currentPhase;
+  }
+
+  public set currentPhase(phase: GamePhase) {
+    this._currentPhase = phase;
+    this.textLabelPhase.text = this.currentPhase;
+  }
+
+  public nextTurn() {
+
+    this.isMyTurn = !this.isMyTurn;
+
+    if(this.isFirstTurn === this._isMyTurn) {
+      this.nextPhase();
+    }
+  }
+
+
+  private nextPhase() {
+    switch (this.currentPhase) {
+        case GamePhase.MEMORY_GAME:
+            this.currentPhase = GamePhase.COST_SUMMON_SPELL;
+            break;
+        case GamePhase.COST_SUMMON_SPELL:
+            this.currentPhase = GamePhase.ATTACK;
+            break;
+        case GamePhase.ATTACK:
+            this.currentPhase = GamePhase.MEMORY_GAME;
+            break;
+    }
   }
 }

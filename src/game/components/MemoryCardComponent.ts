@@ -1,90 +1,133 @@
-import { tCard } from "@/game/scenes/GameScene";
+import { tSize } from "@/utils/types";
+import { tCardFullInfo, tCardKnownInfo } from "../clients/GameClient";
 
-
-const DEBUG: boolean = true;
+export enum MemoryCardStatus {
+  FRONT = "front",
+  BACK = "back",
+  MATCHED = "matched"
+}
 
 export class MemoryCardComponent extends Phaser.GameObjects.Container {
     private frontImage: Phaser.GameObjects.Image;
     private backImage: Phaser.GameObjects.Image;
     private label: Phaser.GameObjects.Text;
-    private isRevealed: boolean = false;
-    private isMatched: boolean = false;
-    public readonly value: number;
-    public readonly cardGen: tCard;
-  
-    constructor(scene: Phaser.Scene, cardGen: tCard) {
-      super(scene);
-      this.value = cardGen.pair;
-      this.cardGen = cardGen;
-  
-      this.backImage = scene.add.image(0, 0, `card_back/${cardGen.team}/`).setDisplaySize(100, 150);
-      this.frontImage = scene.add.image(0, 0, `card_front/${cardGen.team}/${this.value}`).setDisplaySize(100, 150);
-      this.frontImage.setVisible(false);
-  
-      this.label = scene.add.text(0, 0, this.value.toString(), {
-        fontSize: '32px',
-        color: '#fff'
-      }).setOrigin(0.5);
-      this.label.setVisible(DEBUG);
-  
-      this.add([this.backImage, this.frontImage, this.label]);
-      this.setSize(100, 150);
-      this.setInteractive();
-  
-      this.on("pointerdown", () => {
-        if (!this.isRevealed && !this.isMatched) {
-          this.emit("cardClicked", this);
-        }
-      });
-  
-      this.on("pointerover", () => {
-        if (!this.isRevealed && !this.isMatched) {
-          this.backImage.alpha = 0.8;
-          this.scene.input.setDefaultCursor("pointer");
-        }
-      });
-  
-      this.on("pointerout", () => {
-        this.backImage.alpha = 1.0;
-        this.scene.input.setDefaultCursor("default");
-      });
-  
-      scene.add.existing(this);
-    }
-  
-    reveal() {
-      if (!this.isMatched) {
-        this.isRevealed = true;
-        this.backImage.setVisible(false);
-        this.frontImage.setVisible(true);
-      }
-    }
-  
-    hide() {
-      if (!this.isMatched) {
-        this.isRevealed = false;
-        this.frontImage.setVisible(false);
-        this.backImage.setVisible(true);
-      }
-    }
-  
-    match() {
-      this.isMatched = true;
-      this.frontImage.setTint(0x00ff00);
-      this.backImage.setTint(0x00ff00);
-      this.disableInteractive();
-    }
-  
-    isFaceUp(): boolean {
-      return this.isRevealed;
+    private _cardKnownInfo: tCardKnownInfo;
+    private _cardFullInfo?: tCardFullInfo;
+    private _status: MemoryCardStatus;
+    private _size: tSize;
+
+    constructor(scene: Phaser.Scene, cardKnownInfo: tCardKnownInfo, cardFullInfo?: tCardFullInfo, size:tSize = { width: 100, height: 150 }) {
+        super(scene);
+        this._size = size;
+
+        // 画像オブジェクトの初期化
+        this.backImage = scene.add.image(0, 0, `card_back/${cardKnownInfo.team}/`);
+        this.frontImage = scene.add.image(0, 0, cardFullInfo ? `card_front/${cardFullInfo.team}/${cardFullInfo.pair_id}` : '');
+        
+        // サイズの設定
+        this.backImage.setDisplaySize(size.width, size.height);
+        this.frontImage.setDisplaySize(size.width, size.height);
+        
+        // ラベルの初期化
+        this.label = scene.add.text(0, 0, cardKnownInfo.debug?.pair_id.toString() ?? "none", {
+            fontSize: '32px',
+            color: '#fff'
+        }).setOrigin(0.5);
+
+        // カード情報の設定
+        this._cardKnownInfo = cardKnownInfo;
+        this._cardFullInfo = cardFullInfo;
+
+        // コンテナにオブジェクトを追加
+        this.add([this.backImage, this.frontImage, this.label]);
+        this.setSize(size.width, size.height);
+
+        // 初期状態を設定
+        this._status = MemoryCardStatus.BACK;
+        this.status = MemoryCardStatus.BACK;
+
+        // インタラクティブの設定
+        this.setInteractive();
+        this.setupInteractions();
+
+        scene.add.existing(this);
     }
 
-    isPaired(): boolean {
-      return this.isMatched;
+    private setupInteractions(): void {
+        this.on("pointerdown", () => {
+            if (this.status === MemoryCardStatus.BACK) {
+                this.emit("cardClicked", this);
+            }
+        });
+
+        this.on("pointerover", () => {
+            if (this.status === MemoryCardStatus.BACK) {
+                this.backImage.alpha = 0.8;
+                this.scene.input.setDefaultCursor("pointer");
+            }
+        });
+
+        this.on("pointerout", () => {
+            this.backImage.alpha = 1.0;
+            this.scene.input.setDefaultCursor("default");
+        });
     }
 
-    getValue(): number {
-      return this.value;
+    public get size(): tSize {
+        return this._size;
+    }
+
+    public set size(size: tSize) {
+        this._size = size;
+        this.setSize(size.width, size.height);
+        this.backImage.setDisplaySize(size.width, size.height);
+        this.frontImage.setDisplaySize(size.width, size.height);
+    }
+
+    public get cardKnownInfo(): tCardKnownInfo {
+        return this._cardKnownInfo;
+    }
+
+    public set cardKnownInfo(cardKnownInfo: tCardKnownInfo) {
+        this._cardKnownInfo = cardKnownInfo;
+        this.backImage.setTexture(`card_back/${cardKnownInfo.team}/`);
+    }
+
+    public get cardFullInfo(): tCardFullInfo|undefined {
+        return this._cardFullInfo;
+    }
+
+    public set cardFullInfo(cardFullInfo: tCardFullInfo|undefined) {
+        this._cardFullInfo = cardFullInfo;
+        if (cardFullInfo) {
+            this.frontImage.setTexture(`card_front/${cardFullInfo.team}/${cardFullInfo.pair_id}`);
+            this.frontImage.setDisplaySize(this.size.width, this.size.height);
+        }
+    }
+
+    public get status(): MemoryCardStatus {
+        return this._status;
+    }
+
+    public set status(state: MemoryCardStatus) {
+        switch(state) {
+            case MemoryCardStatus.FRONT:
+                this.frontImage.setVisible(true);
+                this.backImage.setVisible(false);
+                this.label.setVisible(true);
+                break;
+            case MemoryCardStatus.BACK:
+                this.frontImage.setVisible(false);
+                this.backImage.setVisible(true);
+                this.label.setVisible(true);
+                break;
+            case MemoryCardStatus.MATCHED:
+                this.frontImage.setVisible(false);
+                this.backImage.setVisible(false);
+                this.label.setVisible(false);
+                break;
+        }
+        this._status = state;
     }
 }
   
