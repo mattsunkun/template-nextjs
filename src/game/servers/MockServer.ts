@@ -1,6 +1,8 @@
 import { generateStringUuid } from '@/utils/functions';
 import { tSize } from '@/utils/types';
 import { tCardFullInfo, tCardKnownInfo, tRule } from '../clients/GameClient';
+import { tCardPhase } from '../managers/PhaseManager';
+import { eGamePhase } from '../managers/TurnManager';
 
 const CARD_SIZE:tSize = {
   width: 100, 
@@ -89,6 +91,31 @@ export class LocalServer {
     return {
       isMyTurn: this.isMyTurn
     };
+  }
+
+  private selectedId:string
+
+  receiveOpponentCardFullInfo(cardPhases:tCardPhase[]): tCardFullInfo|undefined {
+
+    // MEMORY_GAMEフェーズのカードのみ抽出
+    const memoryGameCards = cardPhases.filter(phase => 
+      phase.status === eGamePhase.MEMORY_GAME && 
+      !(this.selectedId === phase.info.cardKnownInfo.idFrontBack)
+    );
+
+    if (memoryGameCards.length === 0) {
+      return undefined;
+    }
+
+    // ランダムに1枚選択
+    const randomIndex = Math.floor(Math.random() * memoryGameCards.length);
+    const selectedCard = memoryGameCards[randomIndex];
+
+    // 選択したカードのIDを記録
+    this.selectedId = selectedCard.info.cardKnownInfo.idFrontBack;
+
+    // 対応するカード情報を返す
+    return this.fetchSpecificCardFullInfo(selectedCard.info.cardKnownInfo.idFrontBack);
   }
 
 }

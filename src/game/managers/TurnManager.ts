@@ -1,10 +1,19 @@
 import { TextLabel } from "../components/utils/TextLabel";
-import { GamePhase } from "./PhaseManager";
+
+
+
+// ゲームフェーズを定義
+export enum eGamePhase {
+  COST_SUMMON_SPELL = 'cost-summon-spell', // コスト変換・キャラ召喚・呪文詠唱フェーズ
+  MEMORY_GAME = 'memory-game',            // 神経衰弱フェーズ
+  ATTACK = 'attack',                      // 攻撃フェーズ
+  GAME_END = 'game-end'                   // ゲーム終了
+}
 
 export class TurnManager {
   private _isMyTurn: boolean;
   private readonly isFirstTurn: boolean;
-  public _currentPhase: GamePhase; // 神経衰弱フェーズから開始
+  public _currentPhase: eGamePhase; // 神経衰弱フェーズから開始
 
   private scene: Phaser.Scene;
   private textLabelPhase: TextLabel;
@@ -16,7 +25,7 @@ export class TurnManager {
 
     this.isMyTurn = isMyTurn;
     this.isFirstTurn = isMyTurn;
-    this.currentPhase = GamePhase.MEMORY_GAME;
+    this.currentPhase = eGamePhase.MEMORY_GAME;
   }
 
 
@@ -43,11 +52,11 @@ export class TurnManager {
     this.textLabelTurn.text = isMyTurn ? '自分のターン' : '相手のターン';
   }
 
-  public get currentPhase(): GamePhase {
+  public get currentPhase(): eGamePhase {
     return this._currentPhase;
   }
 
-  public set currentPhase(phase: GamePhase) {
+  public set currentPhase(phase: eGamePhase) {
     this._currentPhase = phase;
     this.textLabelPhase.text = this.currentPhase;
   }
@@ -64,14 +73,14 @@ export class TurnManager {
 
   private nextPhase() {
     switch (this.currentPhase) {
-        case GamePhase.MEMORY_GAME:
-            this.currentPhase = GamePhase.COST_SUMMON_SPELL;
+        case eGamePhase.MEMORY_GAME:
+            this.currentPhase = eGamePhase.COST_SUMMON_SPELL;
             break;
-        case GamePhase.COST_SUMMON_SPELL:
-            this.currentPhase = GamePhase.ATTACK;
+        case eGamePhase.COST_SUMMON_SPELL:
+            this.currentPhase = eGamePhase.ATTACK;
             break;
-        case GamePhase.ATTACK:
-            this.currentPhase = GamePhase.MEMORY_GAME;
+        case eGamePhase.ATTACK:
+            this.currentPhase = eGamePhase.MEMORY_GAME;
             break;
     }
   }
