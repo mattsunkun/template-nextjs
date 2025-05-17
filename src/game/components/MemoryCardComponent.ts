@@ -29,7 +29,7 @@ export class MemoryCardComponent extends Phaser.GameObjects.Container {
         this.frontImage.setDisplaySize(size.width, size.height);
         
         // ラベルの初期化
-        this.label = scene.add.text(0, 0, cardKnownInfo.debug?.pair_id.toString() ?? "", {
+        this.label = scene.add.text(0, 0, `debug\n ${cardKnownInfo.debug?.pair_id.toString() ?? ""}`, {
             fontSize: '32px',
             color: '#fff',
             backgroundColor: '#000'
