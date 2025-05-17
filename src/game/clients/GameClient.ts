@@ -22,6 +22,10 @@ export type tImageId = {
 
 export type tRule = {
   isMyTurn: boolean;
+  teams: string[];
+  allPairCount: number;
+  disCardPairCount: number;
+  usePairCount: number;
 }
 
 export type tPreference = {
@@ -98,11 +102,20 @@ export class GameClient {
     }
   }
 
+  
   async receiveOpponentCardFullInfo(cardPhases:tCardPhase[]): Promise<tCardFullInfo|undefined> {
     if(this.localServer) {
-      return this.localServer.receiveOpponentCardFullInfo(cardPhases);
-    } else{
-      return await this.fetch("specific-card-full-info") as tCardFullInfo;
+      return await this.localServer.receiveOpponentCardFullInfo(cardPhases);
+
+    } else {
+      const response = await fetch(`/api/game/opponent-card-full-info`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cardPhases }),
+      });
+      return response.json() as Promise<tCardFullInfo>;
     }
   }
 }

@@ -4,27 +4,21 @@ import { MemoryCardComponent } from './MemoryCardComponent';
 export class Table {
   private scene: Phaser.Scene;
   private cards: MemoryCardComponent[];
-  private x: number;
-  private y: number;
-  private width: number;
-  private height: number;
+  private rows: number;
+  private cols: number;
   private margin: number;
 
   constructor(
     scene: Phaser.Scene,
     cards: MemoryCardComponent[],
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    margin: number = 10
+    rows: number,
+    cols: number,
+    margin: number
   ) {
     this.scene = scene;
     this.cards = cards;
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
+    this.rows = rows;
+    this.cols = cols;
     this.margin = margin;
 
     this.layoutCards();
@@ -36,18 +30,24 @@ export class Table {
     const cardWidth = this.cards[0].size.width;
     const cardHeight = this.cards[0].size.height;
 
-    const cols = Math.floor((this.width + this.margin) / (cardWidth + this.margin));
-    const rows = Math.ceil(this.cards.length / cols);
+    // 画面の中央座標を取得
+    const centerX = this.scene.cameras.main.width / 2;
+    const centerY = this.scene.cameras.main.height / 2;
 
-    const offsetX = this.x + (this.width  - (cols * (cardWidth + this.margin) - this.margin)) / 2;
-    const offsetY = this.y + (this.height - (rows * (cardHeight + this.margin) - this.margin)) / 2;
+    // カード全体の幅と高さを計算
+    const totalWidth = this.cols * (cardWidth + this.margin) - this.margin;
+    const totalHeight = this.rows * (cardHeight + this.margin) - this.margin;
+
+    // 開始位置を計算（左上のカードの中心座標）
+    const startX = centerX - totalWidth / 2 + cardWidth / 2;
+    const startY = centerY - totalHeight / 2 + cardHeight / 2;
 
     for (let i = 0; i < this.cards.length; i++) {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
+      const col = i % this.cols;
+      const row = Math.floor(i / this.cols);
 
-      const x = offsetX + col * (cardWidth + this.margin) + cardWidth / 2;
-      const y = offsetY + row * (cardHeight + this.margin) + cardHeight / 2;
+      const x = startX + col * (cardWidth + this.margin);
+      const y = startY + row * (cardHeight + this.margin);
 
       this.cards[i].setPosition(x, y);
     }

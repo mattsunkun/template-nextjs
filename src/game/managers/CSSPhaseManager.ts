@@ -1,8 +1,7 @@
 import { GameClient } from "../clients/GameClient";
 import { HandCardComponent } from "../components/HandCardComponent";
 import { HandCardTableComponent } from "../components/HandCardTableComponent";
-import { eWho, PhaseManager } from "./PhaseManager";
-import { eGamePhase } from "./TurnManager";
+import { eGamePhase, eWho, PhaseManager } from "./PhaseManager";
 
 export class CSSPhaseManager {
     private scene: Phaser.Scene;
@@ -16,10 +15,28 @@ export class CSSPhaseManager {
         this.phaseManager = phaseManager;
         this.scene = phaseManager.scene;
         this.gameClient = phaseManager.gameClient;
-        this.myHandTable = new HandCardTableComponent(this.scene, {x: 0, y: 0, size: {width: 800, height: 300}});
-        this.opponentHandTable = new HandCardTableComponent(this.scene, {x: 800, y: 500, size: {width: 800, height: 300}});
+        const screenWidth = this.scene.scale.width;
+        const screenHeight = this.scene.scale.height;
+        const handTableWidth = 800;
+        const handTableHeight = 300;
+
+        // 中央下に配置
+        const myX = (screenWidth - handTableWidth) / 2;
+        const myY = screenHeight - handTableHeight - 50;
+
+        // 中央上に配置 
+        const opponentX = (screenWidth - handTableWidth) / 2;
+        const opponentY = 50;
+
+        this.myHandTable = new HandCardTableComponent(this.scene, {x: myX, y: myY, size: {width: 800, height: 300}},false);
+        this.opponentHandTable = new HandCardTableComponent(this.scene, {x: opponentX, y: opponentY, size: {width: 800, height: 300}}, true);
         this.setupCardInteractions();
         this.setHandTable();
+    }
+
+    public startPhase(){
+        this.setHandTable();
+        console.log("startPhase");
     }
 
     public setHandTable(): void {
@@ -33,6 +50,7 @@ export class CSSPhaseManager {
                 full: cardPhase.info.cardFullInfo!,
                 who: cardPhase.who
             }));
+        
         this.myHandTable.setCards(cssPhaseCards.filter(card => card.who === eWho.MY));
         this.opponentHandTable.setCards(cssPhaseCards.filter(card => card.who === eWho.OPPONENT));
     }

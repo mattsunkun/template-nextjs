@@ -2,8 +2,7 @@ import { sleep, unexpectError } from "@/utils/functions";
 import { GameClient } from "../clients/GameClient";
 import { MemoryCardComponent, MemoryCardStatus } from "../components/MemoryCardComponent";
 import { Table } from "../components/MemoryCardTableComponent";
-import { eWho, PhaseManager, tCardPhase } from "./PhaseManager";
-import { eGamePhase, TurnManager } from "./TurnManager";
+import { eGamePhase, eWho, PhaseManager, tCardPhase } from "./PhaseManager";
 
 
 export class MemoryPhaseManager {
@@ -14,14 +13,11 @@ export class MemoryPhaseManager {
     private pairAmount: number = 2;
     private selectedCardId: string[] = [];
     private isProcessing: boolean = false;
-
-    private turnManager: TurnManager;
     private gameClient: GameClient;
     private phaseManager: PhaseManager;
 
     constructor(data: {phaseManager: PhaseManager}){
         this.scene = data.phaseManager.scene;
-        this.turnManager = data.phaseManager.turnManager; 
         this.gameClient = data.phaseManager.gameClient;
         this.phaseManager = data.phaseManager;
         // this.table = new Table(scene);
@@ -45,19 +41,24 @@ export class MemoryPhaseManager {
 
         
 
-        this.table = new Table(this.scene, this.memoryCardComponents, tableX, tableY, tableWidth, tableHeight, margin);
+        this.table = new Table(this.scene, this.memoryCardComponents, 4, 7, 10);
 
-        this.eachTurn(this.turnManager.isMyTurn);
+    }
+
+    public startPhase(){
+        this.table.setInteractive(this.phaseManager.isMyTurn);
+        this.eachTurn();
     }
 
     private async onCardClicked(cardComponent: MemoryCardComponent) {
-        await this.flip(cardComponent, this.turnManager.isMyTurn, true);
-    }
-
-    private async flip(cardComponent: MemoryCardComponent, isMyTurn:boolean, again:boolean){
 
         // 裏じゃないやつは選べない。
         if (cardComponent.status !== MemoryCardStatus.BACK) return;
+        await this.flipAsync(cardComponent, true);
+    }
+
+    private async flipAsync(cardComponent: MemoryCardComponent, again:boolean){
+
 
         // カードの情報を取得する。
         cardComponent.cardFullInfo = await this.gameClient.fetchSpecificCardFullInfo(cardComponent.cardKnownInfo.idFrontBack);
@@ -81,24 +82,21 @@ export class MemoryPhaseManager {
                 // マッチング判定のため少し待機
                 await sleep(500);
 
+                let isMatch = false;
+
                 // 全てのカードのpair_idが同じか確認
                 const firstPairId = selectedCards[0].cardFullInfo?.pair_id;
 
                 if (selectedCards.every(card => card.cardFullInfo?.pair_id === firstPairId)) {
+                    isMatch = true;
                     // 全てのカードをmatchedに変更
                     selectedCards.forEach(card => {
                         card.status = MemoryCardStatus.MATCHED;
 
-                        this.phaseManager.updateCardPhase(card.cardKnownInfo.idFrontBack, isMyTurn ? eWho.MY : eWho.OPPONENT, eGamePhase.COST_SUMMON_SPELL, card.cardFullInfo);
+                        this.phaseManager.updateCardPhase(card.cardKnownInfo.idFrontBack, this.phaseManager.isMyTurn ? eWho.MY : eWho.OPPONENT, eGamePhase.COST_SUMMON_SPELL, card.cardFullInfo);
                     });
 
                     this.phaseManager.cssPhaseManager.setHandTable();
-                    // 再挑戦が許されているかどうか。
-                    if(again){
-                        this.selectedCardId = [];
-                        this.eachTurn(isMyTurn);
-                        return;
-                    }
                 } else {
                     // 全てのカードをbackに戻す
                     selectedCards.forEach(card => {
@@ -106,37 +104,68 @@ export class MemoryPhaseManager {
                     });
                 }
 
+                if(this.checkPhaseDone()){
+                    return;
+                }
+
+                this.selectedCardId = [];
+
+                if(isMatch && again){
+                    return await this.eachTurn();
+                }else{
+
+                this.nextTurn();
+                }
+
+            }else{
+                unexpectError("selectedCards is undefined");
             }
 
-            // 選択状態をリセット
-            this.selectedCardId = [];
-
-            this.turnManager.nextTurn();
-            this.table.setInteractive(false);
-            if(this.turnManager.currentPhase === eGamePhase.MEMORY_GAME){
-                this.eachTurn(this.turnManager.isMyTurn);
-            }
         
 
         }
     }
 
-    public async eachTurn(isMyTurn:boolean){
-        
-        this.table.setInteractive(isMyTurn);
-        if(isMyTurn) {
+    private async nextTurn(){
+       if(this.phaseManager.nextTurn()){
+            this.startPhase();
+       }
+    }
+
+    private checkPhaseDone():boolean{
+        const memoryGameCards = this.phaseManager.cardPhases.filter(phase => 
+            phase.status === eGamePhase.MEMORY_GAME
+        );
+        if(memoryGameCards.length <= 2) {
+            this.phaseManager.nextPhase();
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    public endPhase(){
+        this.table.setInteractive(false);
+    }
+
+    public async eachTurn(){
+    
+        if(this.phaseManager.isMyTurn) {
 
         }else{
+            console.log("eachTurn");
             for(let i = 0; i < this.pairAmount; i++){
-                await sleep(300);
 
                 const cardFullInfo = await this.gameClient.receiveOpponentCardFullInfo(this.phaseManager.cardPhases);
                 if(cardFullInfo) {
                     const targetCard = this.memoryCardComponents.find(card => card.cardKnownInfo.idFrontBack === cardFullInfo.idFrontBack);
                     if(targetCard){
-                        await this.flip(targetCard, isMyTurn, true);
+                        await this.flipAsync(targetCard, true);
+                    }else{
+                        unexpectError("targetCard is undefined");
                     }
                 }else{
+                    debugger;
                     unexpectError("cardFullInfo is undefined");
                 }
             }

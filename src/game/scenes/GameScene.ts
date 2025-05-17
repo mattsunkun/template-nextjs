@@ -1,33 +1,32 @@
 import { Scene } from 'phaser';
 
-import { GameClient } from '../clients/GameClient';
+import { GameClient, tRule } from '../clients/GameClient';
 import { PhaseManager } from '../managers/PhaseManager';
-export const teams = ["spade", "heart"];
+import { _allPairCount, _teams } from '../servers/MockServer';
 
 export class GameScene extends Scene
 {
-    private numAllPair: number = 10;
 
     private camera: Phaser.Cameras.Scene2D.Camera;
 
     private phaseManager: PhaseManager;
 
     private gameClient: GameClient;
+    private rule: tRule;
 
     constructor()
     {
         super('GameScene');
     }
 
-    async init(gameClient: GameClient) {
+    async init(gameClient: GameClient, rule: tRule) {
         this.gameClient = gameClient;
-
     }
 
     preload(){
-        for (const team of teams) {
+        for (const team of _teams) {
             this.load.image(`card_back/${team}/`, `assets/card_back/${team}.png`);
-            for (let i = 0; i <= this.numAllPair; i++) {
+            for (let i = 0; i <= _allPairCount; i++) {
               this.load.image(`card_front/${team}/${i}`, `assets/card_front/${team}/${i}.png`);
             }
         }

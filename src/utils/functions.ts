@@ -12,5 +12,7 @@ export const sleep = (ms: number): Promise<void> => {
 
 
 export const unexpectError = (message: string) => {
+    console.warn(message);
+    debugger;
   throw new Error(message);
 };

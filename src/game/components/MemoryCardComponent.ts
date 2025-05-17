@@ -29,9 +29,10 @@ export class MemoryCardComponent extends Phaser.GameObjects.Container {
         this.frontImage.setDisplaySize(size.width, size.height);
         
         // ラベルの初期化
-        this.label = scene.add.text(0, 0, cardKnownInfo.debug?.pair_id.toString() ?? "none", {
+        this.label = scene.add.text(0, 0, cardKnownInfo.debug?.pair_id.toString() ?? "", {
             fontSize: '32px',
-            color: '#fff'
+            color: '#fff',
+            backgroundColor: '#000'
         }).setOrigin(0.5);
 
         // カード情報の設定
@@ -51,6 +52,7 @@ export class MemoryCardComponent extends Phaser.GameObjects.Container {
         this.setupInteractions();
 
         scene.add.existing(this);
+        this.label.setVisible(false);
     }
 
     private setupInteractions(): void {
@@ -64,12 +66,14 @@ export class MemoryCardComponent extends Phaser.GameObjects.Container {
             if (this.status === MemoryCardStatus.BACK) {
                 this.backImage.alpha = 0.8;
                 this.scene.input.setDefaultCursor("pointer");
+                this.label.setVisible(true);
             }
         });
 
         this.on("pointerout", () => {
             this.backImage.alpha = 1.0;
             this.scene.input.setDefaultCursor("default");
+            this.label.setVisible(false);
         });
     }
 
@@ -114,12 +118,12 @@ export class MemoryCardComponent extends Phaser.GameObjects.Container {
             case MemoryCardStatus.FRONT:
                 this.frontImage.setVisible(true);
                 this.backImage.setVisible(false);
-                this.label.setVisible(true);
+                this.label.setVisible(false);
                 break;
             case MemoryCardStatus.BACK:
                 this.frontImage.setVisible(false);
                 this.backImage.setVisible(true);
-                this.label.setVisible(true);
+                this.label.setVisible(false);
                 break;
             case MemoryCardStatus.MATCHED:
                 this.frontImage.setVisible(false);

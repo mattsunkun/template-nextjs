@@ -1,8 +1,7 @@
-import { generateStringUuid } from '@/utils/functions';
+import { generateStringUuid, sleep, unexpectError } from '@/utils/functions';
 import { tSize } from '@/utils/types';
 import { tCardFullInfo, tCardKnownInfo, tRule } from '../clients/GameClient';
-import { tCardPhase } from '../managers/PhaseManager';
-import { eGamePhase } from '../managers/TurnManager';
+import { eGamePhase, tCardPhase } from '../managers/PhaseManager';
 
 const CARD_SIZE:tSize = {
   width: 100, 
@@ -10,18 +9,23 @@ const CARD_SIZE:tSize = {
 }
 
 
-const teams = ["spade", "heart"];
-const pairCount = 10;
+export const _teams = ["spade", "heart"];
+export const _allPairCount = 13;
+export const _disCardPairCount = 1;
+export const _usePairCount = _allPairCount - _disCardPairCount;
+
 export class LocalServer {
   private roomId: string;
   private myId: string;
   private opponentId: string;
-  private _isMyTurn: boolean;
+  private rule: tRule;
   private cardKnownInfos: tCardKnownInfo[];
   private cardFullInfos: tCardFullInfo[];
+  private discardedCards: tCardFullInfo[];
+  private discardedPairCards: tCardFullInfo[];
 
   public get isMyTurn(): boolean {
-    return this._isMyTurn;
+    return this.rule.isMyTurn;
   }
 
 
@@ -29,17 +33,21 @@ export class LocalServer {
     this.roomId = roomId;
     this.myId = myId;
     this.opponentId = opponentId;
+    this.discardedCards = [];
+    this.discardedPairCards = [];
 
-    this.createCard();
     this.createRule();
+    this.createCard();
   }
 
-  createCard(){
-
+  private createCard(){
     this.cardKnownInfos = [];
     this.cardFullInfos = [];
-    for (const team of teams) {
-      for (let i = 0; i <= pairCount; i++) {
+    this.discardedCards = [];
+
+    // まず全てのカードを作成
+    for (const team of this.rule.teams) {
+      for (let i = 0; i <= this.rule.allPairCount; i++) {
         const idFrontBack = generateStringUuid();
         const known: tCardKnownInfo = {
           id: `${team}-${i}`,
@@ -58,20 +66,51 @@ export class LocalServer {
             real: `${team}_${i}_real`
           },
           cost: i,
-          attack: pairCount - i,
+          attack: this.rule.allPairCount - i,
           team: team
         };
         this.cardKnownInfos.push(known);
         this.cardFullInfos.push(full);
       }
     }
+
+    // 各チームから指定された枚数のカードをランダムにdiscard
+    for (const team of this.rule.teams) {
+      const teamCards = this.cardFullInfos.filter(card => card.team === team && card.pair_id !== 0);
+      const shuffledTeamCards = [...teamCards].sort(() => Math.random() - 0.5);
+      
+      for (let i = 0; i < this.rule.disCardPairCount; i++) {
+        if (shuffledTeamCards[i]) {
+          this.discardedCards.push(shuffledTeamCards[i]);
+          // 同じpair_idの別チームのカードを探す
+          const pairCard = this.cardFullInfos.filter(card => 
+            card.team !== shuffledTeamCards[i].team && 
+            card.pair_id === shuffledTeamCards[i].pair_id
+          );
+          if (pairCard) {
+            this.discardedPairCards.push(...pairCard);
+          }else{
+            unexpectError("pairCard is undefined");
+          }
+          // cardKnownInfosとcardFullInfosから該当カードを削除
+          this.cardKnownInfos = this.cardKnownInfos.filter(card => card.idFrontBack !== shuffledTeamCards[i].idFrontBack);
+          this.cardFullInfos = this.cardFullInfos.filter(card => card.idFrontBack !== shuffledTeamCards[i].idFrontBack);
+        }
+      }
+    }
   }
 
-  createRule(){
-    this._isMyTurn = false; //Math.random() < 0.5
+  private createRule(){
+    this.rule = {
+      isMyTurn: false, //Math.random() < 0.5
+      teams: _teams, 
+      allPairCount: _allPairCount,
+      disCardPairCount: _disCardPairCount,
+      usePairCount: _usePairCount
+    }
   }
 
-  fetchShuffledCardKnownInfo(): tCardKnownInfo[] {
+  private shuffleCard(){
     // カードをシャッフル
     const shuffled = [...this.cardKnownInfos];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -79,22 +118,46 @@ export class LocalServer {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     this.cardKnownInfos = shuffled;
+  }
+
+
+  fetchShuffledCardKnownInfo(): tCardKnownInfo[] {
+    this.shuffleCard();
     return this.cardKnownInfos;
   }
 
   fetchSpecificCardFullInfo(idFrontBack: string): tCardFullInfo|undefined {
-    return this.cardFullInfos.find(card => card.idFrontBack === idFrontBack);
+    const card = this.cardFullInfos.find(card => card.idFrontBack === idFrontBack);
+    if(card){
+      return card;
+    }else{
+      unexpectError("card is undefined");
+      return undefined;
+    }
   }
 
 
   fetchRule(): tRule {
-    return {
-      isMyTurn: this.isMyTurn
-    };
+    return this.rule;
   }
 
+
+  private firstFlag = true;
+  private secondFlag = true;
+  async receiveOpponentCardFullInfo(cardPhases:tCardPhase[]): Promise<tCardFullInfo|undefined> {
+
+    await sleep(500);
+    if(this.firstFlag){
+      this.firstFlag = false;
+      return await this.getCheatingPairCard(cardPhases);
+    }
+    if(this.secondFlag){
+      this.secondFlag = false;
+      return await this.getCheatingPairCard(cardPhases);
+    }
   
-  receiveOpponentCardFullInfo(cardPhases:tCardPhase[]): tCardFullInfo|undefined {
+// return await this.getCheatingPairCard(cardPhases);
+
     if(Math.random() < 0.5){
       return this.getRandomPairCard(cardPhases);
     }else{
@@ -103,7 +166,7 @@ export class LocalServer {
   }
   private selectedRandomCard: tCardFullInfo | undefined;
 
-  getRandomPairCard(cardPhases: tCardPhase[]): tCardFullInfo | undefined {
+  getRandomPairCard(cardPhases: tCardPhase[]): tCardFullInfo|undefined {
     if (this.selectedRandomCard) {
       const cardToReturn = this.selectedRandomCard;
       this.selectedRandomCard = undefined;
@@ -114,10 +177,6 @@ export class LocalServer {
         phase.status === eGamePhase.MEMORY_GAME
 
     );
-
-    if (memoryGameCards.length === 0) {
-        return undefined;
-    }
 
     // ランダムに2枚のカードを選択
     const randomIndex1 = Math.floor(Math.random() * memoryGameCards.length);
@@ -131,38 +190,16 @@ export class LocalServer {
     const selectedCardFull1 = this.fetchSpecificCardFullInfo(selectedCard1.info.cardKnownInfo.idFrontBack);
     const selectedCardFull2 = this.fetchSpecificCardFullInfo(selectedCard2.info.cardKnownInfo.idFrontBack);
 
-    if (!selectedCardFull1 || !selectedCardFull2) return undefined;
+    if (!selectedCardFull1 || !selectedCardFull2)
+    {
+      unexpectError("selectedCardFull1 or selectedCardFull2 is undefined");
+      return undefined;
+    }
 
     // 1枚目を保存し、もう1枚を返す
     this.selectedRandomCard = selectedCardFull1;
     return selectedCardFull2;
-    // // すでに1枚目が選択されている場合は、それを返して初期化
-    // if (this.selectedRandomCard) {
-    //     const cardToReturn = this.selectedRandomCard;
-    //     this.selectedRandomCard = undefined;
-    //     return cardToReturn;
-    // }
 
-    // // MEMORY_GAMEフェーズのカードのみ抽出
-    // const memoryGameCards = cardPhases.filter(phase => 
-    //     phase.status === eGamePhase.MEMORY_GAME
-    // );
-
-    // if (memoryGameCards.length === 0) {
-    //     return undefined;
-    // }
-
-    // // ランダムにカードを1枚選択
-    // const randomIndex = Math.floor(Math.random() * memoryGameCards.length);
-    // const selectedCard = memoryGameCards[randomIndex];
-
-    // // 選択したカードのフル情報を取得
-    // const selectedCardFull = this.fetchSpecificCardFullInfo(selectedCard.info.cardKnownInfo.idFrontBack);
-    // if (!selectedCardFull) return undefined;
-
-    // // 1枚目として保存
-    // this.selectedRandomCard = selectedCardFull;
-    // return selectedCardFull;
   }
 
 private selectedCheatingPairCard: tCardFullInfo | undefined;
@@ -179,39 +216,50 @@ getCheatingPairCard(cardPhases: tCardPhase[]): tCardFullInfo | undefined {
     const memoryGameCards = cardPhases.filter(phase => 
         phase.status === eGamePhase.MEMORY_GAME
     );
+    // ランダムにカードを1枚選択
+    // discardedCards以外のカードをフィルタリング
+    const availableCards = memoryGameCards.filter(card => 
+        !this.discardedCards.some(discarded => 
+            (discarded.idFrontBack === card.info.cardKnownInfo.idFrontBack)
+        ) &&
+        !this.discardedPairCards.some(discarded => 
+            (discarded.idFrontBack === card.info.cardKnownInfo.idFrontBack)
+        )
+    );
 
-    if (memoryGameCards.length === 0) {
+    if(availableCards.length === 0) {
+        unexpectError("使用可能なカードがありません");
         return undefined;
     }
-
-    // ランダムにカードを1枚選択
-    const randomIndex = Math.floor(Math.random() * memoryGameCards.length);
-    const selectedCard = memoryGameCards[randomIndex];
+    const randomIndex = Math.floor(Math.random() * availableCards.length);
+    const selectedCard = availableCards[randomIndex];
     
     // 選択したカードのフル情報を取得
     const selectedCardFull = this.fetchSpecificCardFullInfo(selectedCard.info.cardKnownInfo.idFrontBack);
-    if (!selectedCardFull) return undefined;
 
     // 選択したカードと同じpair_idを持つカードを探す
     const pairCards = memoryGameCards.filter(card => {
         const cardFull = this.fetchSpecificCardFullInfo(card.info.cardKnownInfo.idFrontBack);
         return cardFull && 
-               cardFull.pair_id === selectedCardFull.pair_id && 
-               cardFull.idFrontBack !== selectedCardFull.idFrontBack;
+               cardFull.pair_id === selectedCardFull?.pair_id && 
+               cardFull.idFrontBack !== selectedCardFull?.idFrontBack;
     });
-
-    if (pairCards.length === 0) {
-        return undefined;
+    if(pairCards.length === 0){
+      debugger;
+      unexpectError("pairCards is empty");
+      return undefined;
     }
-
     // ペアとなるカードをランダムに選択
     const randomPairIndex = Math.floor(Math.random() * pairCards.length);
     const selectedPairCardInfo = this.fetchSpecificCardFullInfo(pairCards[randomPairIndex].info.cardKnownInfo.idFrontBack);
 
-    if (!selectedPairCardInfo) return undefined;
-
     // 2枚目のカードを保存
     this.selectedCheatingPairCard = selectedPairCardInfo;
+
+    if(!selectedCardFull || !selectedPairCardInfo){
+      unexpectError("selectedCardFull or selectedPairCardInfo is undefined");
+      return undefined;
+    }
 
     // 1枚目のカードを返す
     return selectedCardFull;
