@@ -9,3 +9,8 @@ export const generateStringUuid = (): string => {
 export const sleep = (ms: number): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms));
 };
+
+
+export const unexpectError = (message: string) => {
+  throw new Error(message);
+};

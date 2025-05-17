@@ -19,13 +19,13 @@ export class TurnManager {
   private textLabelPhase: TextLabel;
   private textLabelTurn: TextLabel;
 
-  constructor(scene: Phaser.Scene, isMyTurn: boolean) {
+  constructor(scene: Phaser.Scene, isMyTurn: boolean, defaultPhase: eGamePhase) {
     this.scene = scene;
     this.createLabelText();
 
     this.isMyTurn = isMyTurn;
     this.isFirstTurn = isMyTurn;
-    this.currentPhase = eGamePhase.MEMORY_GAME;
+    this.currentPhase = defaultPhase;
   }
 
 

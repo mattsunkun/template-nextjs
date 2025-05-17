@@ -68,7 +68,7 @@ export class LocalServer {
   }
 
   createRule(){
-    this._isMyTurn = Math.random() < 0.5
+    this._isMyTurn = false; //Math.random() < 0.5
   }
 
   fetchShuffledCardKnownInfo(): tCardKnownInfo[] {
@@ -93,29 +93,128 @@ export class LocalServer {
     };
   }
 
-  private selectedId:string
-
+  
   receiveOpponentCardFullInfo(cardPhases:tCardPhase[]): tCardFullInfo|undefined {
+    if(Math.random() < 0.5){
+      return this.getRandomPairCard(cardPhases);
+    }else{
+      return this.getCheatingPairCard(cardPhases);
+    }
+  }
+  private selectedRandomCard: tCardFullInfo | undefined;
 
+  getRandomPairCard(cardPhases: tCardPhase[]): tCardFullInfo | undefined {
+    if (this.selectedRandomCard) {
+      const cardToReturn = this.selectedRandomCard;
+      this.selectedRandomCard = undefined;
+      return cardToReturn;
+    }
     // MEMORY_GAMEフェーズのカードのみ抽出
     const memoryGameCards = cardPhases.filter(phase => 
-      phase.status === eGamePhase.MEMORY_GAME && 
-      !(this.selectedId === phase.info.cardKnownInfo.idFrontBack)
+        phase.status === eGamePhase.MEMORY_GAME
+
     );
 
     if (memoryGameCards.length === 0) {
-      return undefined;
+        return undefined;
     }
 
-    // ランダムに1枚選択
+    // ランダムに2枚のカードを選択
+    const randomIndex1 = Math.floor(Math.random() * memoryGameCards.length);
+    let randomIndex2 = Math.floor(Math.random() * (memoryGameCards.length - 1));
+    if (randomIndex2 >= randomIndex1) randomIndex2++;
+
+    const selectedCard1 = memoryGameCards[randomIndex1];
+    const selectedCard2 = memoryGameCards[randomIndex2];
+
+    // 両方のカードのフル情報を取得
+    const selectedCardFull1 = this.fetchSpecificCardFullInfo(selectedCard1.info.cardKnownInfo.idFrontBack);
+    const selectedCardFull2 = this.fetchSpecificCardFullInfo(selectedCard2.info.cardKnownInfo.idFrontBack);
+
+    if (!selectedCardFull1 || !selectedCardFull2) return undefined;
+
+    // 1枚目を保存し、もう1枚を返す
+    this.selectedRandomCard = selectedCardFull1;
+    return selectedCardFull2;
+    // // すでに1枚目が選択されている場合は、それを返して初期化
+    // if (this.selectedRandomCard) {
+    //     const cardToReturn = this.selectedRandomCard;
+    //     this.selectedRandomCard = undefined;
+    //     return cardToReturn;
+    // }
+
+    // // MEMORY_GAMEフェーズのカードのみ抽出
+    // const memoryGameCards = cardPhases.filter(phase => 
+    //     phase.status === eGamePhase.MEMORY_GAME
+    // );
+
+    // if (memoryGameCards.length === 0) {
+    //     return undefined;
+    // }
+
+    // // ランダムにカードを1枚選択
+    // const randomIndex = Math.floor(Math.random() * memoryGameCards.length);
+    // const selectedCard = memoryGameCards[randomIndex];
+
+    // // 選択したカードのフル情報を取得
+    // const selectedCardFull = this.fetchSpecificCardFullInfo(selectedCard.info.cardKnownInfo.idFrontBack);
+    // if (!selectedCardFull) return undefined;
+
+    // // 1枚目として保存
+    // this.selectedRandomCard = selectedCardFull;
+    // return selectedCardFull;
+  }
+
+private selectedCheatingPairCard: tCardFullInfo | undefined;
+
+getCheatingPairCard(cardPhases: tCardPhase[]): tCardFullInfo | undefined {
+    // すでに1枚目が選択されている場合は、それを返して初期化
+    if (this.selectedCheatingPairCard) {
+        const cardToReturn = this.selectedCheatingPairCard;
+        this.selectedCheatingPairCard = undefined;
+        return cardToReturn;
+    }
+
+    // MEMORY_GAMEフェーズのカードのみ抽出
+    const memoryGameCards = cardPhases.filter(phase => 
+        phase.status === eGamePhase.MEMORY_GAME
+    );
+
+    if (memoryGameCards.length === 0) {
+        return undefined;
+    }
+
+    // ランダムにカードを1枚選択
     const randomIndex = Math.floor(Math.random() * memoryGameCards.length);
     const selectedCard = memoryGameCards[randomIndex];
+    
+    // 選択したカードのフル情報を取得
+    const selectedCardFull = this.fetchSpecificCardFullInfo(selectedCard.info.cardKnownInfo.idFrontBack);
+    if (!selectedCardFull) return undefined;
 
-    // 選択したカードのIDを記録
-    this.selectedId = selectedCard.info.cardKnownInfo.idFrontBack;
+    // 選択したカードと同じpair_idを持つカードを探す
+    const pairCards = memoryGameCards.filter(card => {
+        const cardFull = this.fetchSpecificCardFullInfo(card.info.cardKnownInfo.idFrontBack);
+        return cardFull && 
+               cardFull.pair_id === selectedCardFull.pair_id && 
+               cardFull.idFrontBack !== selectedCardFull.idFrontBack;
+    });
 
-    // 対応するカード情報を返す
-    return this.fetchSpecificCardFullInfo(selectedCard.info.cardKnownInfo.idFrontBack);
-  }
+    if (pairCards.length === 0) {
+        return undefined;
+    }
+
+    // ペアとなるカードをランダムに選択
+    const randomPairIndex = Math.floor(Math.random() * pairCards.length);
+    const selectedPairCardInfo = this.fetchSpecificCardFullInfo(pairCards[randomPairIndex].info.cardKnownInfo.idFrontBack);
+
+    if (!selectedPairCardInfo) return undefined;
+
+    // 2枚目のカードを保存
+    this.selectedCheatingPairCard = selectedPairCardInfo;
+
+    // 1枚目のカードを返す
+    return selectedCardFull;
+}
 
 }
