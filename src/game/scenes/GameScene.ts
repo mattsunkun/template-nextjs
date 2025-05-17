@@ -36,7 +36,7 @@ export class GameScene extends Scene
     async create ()
     {
         this.camera = this.cameras.main;
-        this.camera.setBackgroundColor(0x00ff00);
+        this.camera.setBackgroundColor(0x000000);
 
         this.phaseManager = new PhaseManager(this, this.gameClient);
         await this.phaseManager.create();
