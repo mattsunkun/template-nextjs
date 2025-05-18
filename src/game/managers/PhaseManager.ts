@@ -1,26 +1,8 @@
-import { unexpectError } from '@/utils/functions';
-import { GameClient, tCardFullInfo, tCardKnownInfo } from '../clients/GameClient';
-import { HandCardTableComponent } from "../components/css/HandCardTableComponent";
+import { GameClient, tCardInfo, tPlace, tRule } from '../clients/GameClient';
+import { HandCardTableComponent } from "../components/boards/HandCardBoardComponent";
 import { TextLabel } from '../components/utils/TextLabel';
 import { CSSPhaseManager } from './CSSPhaseManager';
 import { MemoryPhaseManager } from './MemoryPhaseManager';
-
-export enum eWho {
-   MY = "MY",
-   OPPONENT = "OPPONENT"
-}
-
-export type tCardPhase = {
-    info: tCardInfo;
-    status: eGamePhase;
-    who?: eWho;
-}
-
-export type tCardInfo = {
-    cardKnownInfo: tCardKnownInfo;
-    cardFullInfo?: tCardFullInfo;
-}
-
 
 // ゲームフェーズを定義
 export enum eGamePhase {
@@ -33,7 +15,6 @@ export enum eGamePhase {
 
 export class PhaseManager {
     private _isMyTurn: boolean;
-    private isFirstTurn: boolean;
     public _currentPhase: eGamePhase; // 神経衰弱フェーズから開始
   
     private textLabelPhase: TextLabel;
@@ -41,11 +22,11 @@ export class PhaseManager {
     public scene: Phaser.Scene;
 
     public memoryPhaseManager: MemoryPhaseManager;
-    public cssPhaseManager: CSSPhaseManager;
+    private cssPhaseManager: CSSPhaseManager;
     public gameClient: GameClient;
-    public cardPhases: tCardPhase[];
-    public spellCardPhases: tCardPhase[];
+    public cardInfos: tCardInfo[];
     public handTable: HandCardTableComponent;
+    private rule:tRule;
 
     constructor(scene: Phaser.Scene, gameClient:GameClient) {
         this.scene = scene;
@@ -56,66 +37,50 @@ export class PhaseManager {
 
 
     async create(){
+        this.cardInfos = await this.gameClient.fetchShuffledCardKnownInfoAsync();
+        this.rule = await this.gameClient.fetchRuleAsync();
 
-        const defaultPhase = eGamePhase.MEMORY_GAME;
-        const defaultWho = undefined;
-
-
-        const cardKnownInfo = await this.gameClient.fetchShuffledCardKnownInfoAsync();
-        this.cardPhases = cardKnownInfo.map((cardKnownInfo) => {
-            return {
-                info: {
-                    cardKnownInfo: cardKnownInfo,
-                    cardFullInfo: undefined
-                },
-                status: defaultPhase, 
-                who: defaultWho, 
-            }
-        });
-        const spellCardKnownInfo = await this.gameClient.fetchShuffledSpellKnownInfoAsync();
-        this.spellCardPhases = spellCardKnownInfo.map((spellCardKnownInfo) => {
-            return {
-                info: {
-                    cardKnownInfo: spellCardKnownInfo,
-                    cardFullInfo: undefined
-                },
-                status: defaultPhase, 
-                who: defaultWho, 
-            }
-        });
 
         this.memoryPhaseManager = new MemoryPhaseManager({phaseManager: this});
-        this.cssPhaseManager = new CSSPhaseManager(this);
+        // this.cssPhaseManager = new CSSPhaseManager(this);
 
 
-    this.createLabelText();
+        this.createLabelText();
+        this.isMyTurn = this.rule.isMyTurn;
     
-        this.isMyTurn = this.gameClient.isMyTurn;
-        this.isFirstTurn = this.gameClient.isMyTurn;
-        this.currentPhase = defaultPhase;
-        // this.turnManager = new TurnManager(this.scene, this.gameClient.isMyTurn, defaultPhase, this);
+        this.currentPhase = eGamePhase.MEMORY_GAME;
     }
 
-    public updateCardPhase(cardIdFrontBack: string, who:eWho, status: eGamePhase,cardFullInfo?:tCardFullInfo) {
-        const cardPhase = [...this.cardPhases, ...this.spellCardPhases].find(card => card.info.cardKnownInfo.idFrontBack === cardIdFrontBack);
-        if (cardPhase) {
-            cardPhase.status = status;
-            cardPhase.info.cardFullInfo = cardFullInfo;
-            cardPhase.who = who;
+    public async updateCardPlace(cardIdFrontBack: string, place: tPlace) {
+      this.cardInfos = this.cardInfos.map(card => {
+        if (card.idFrontBack === cardIdFrontBack) {
+          return {
+            ...card,
+            place: place,
+          };
         }else{
-            unexpectError("cardPhase is undefined");
+          return card;
         }
+      });
+
+      this.updateVisualizer();
+      await this.gameClient.postCardInfoPlaceAsync(cardIdFrontBack, place);
+        
+    }
+
+    private updateVisualizer(){
+      this.memoryPhaseManager.updateVisualizer();
     }
     
 
-  createLabelText(){
-    this.textLabelPhase = new TextLabel(this.scene, this.scene.scale.width * 2/3, 30, '神経衰弱', {
+  private createLabelText(){
+    this.textLabelPhase = new TextLabel(this.scene, this.scene.scale.width * 2/3, 30, '', {
         fontSize: '32px',
         color: '#ffffff',
         backgroundColor: '#000000',
     }).setOrigin(0.5);
 
-    this.textLabelTurn = new TextLabel(this.scene, this.scene.scale.width * 1/3, 30, 'ターン', {
+    this.textLabelTurn = new TextLabel(this.scene, this.scene.scale.width * 1/3, 30, '', {
         fontSize: '32px',
         color: '#ffffff',
         backgroundColor: '#000000',
@@ -140,7 +105,7 @@ export class PhaseManager {
     this.textLabelPhase.text = this.currentPhase;
     switch(phase){
       case eGamePhase.MEMORY_GAME:
-        this.memoryPhaseManager.startPhase();
+        this.memoryPhaseManager.startPhaseAsync();
         break;
       case eGamePhase.COST_SUMMON_SPELL:
         this.memoryPhaseManager.endPhase();
@@ -150,10 +115,11 @@ export class PhaseManager {
   }
 
   public nextTurn():boolean {
+    // debugger
 
     this.isMyTurn = !this.isMyTurn;
 
-    if(this.isFirstTurn === this._isMyTurn) {
+    if(this.rule.isMyTurn === this._isMyTurn) {
       this.nextPhase();
       return false;
     }else{

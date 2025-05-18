@@ -1,24 +1,76 @@
-import { tCardPhase } from "../managers/PhaseManager";
 import { LocalServer } from "../servers/LocalServer";
 import { CSSGameClient } from "./CSSGameClient";
+import { MemoryGameClient } from "./MemoryGameClient";
 
-export type tCardFullInfo = {
-  id: string;
-
-  idFrontBack: string;
-  pair_id: number;
-
-  image_id: tImageId;
-
-
-  cost: number;
-  attack: number;
-  isMyCard: boolean;
-
-  spell_id?: string;
-
-  isSpellDeck: boolean;
+export enum eCardArea {
+  TABLE = "table",
+  DECK = "deck",
+  HAND = "hand",
+  SUMMON = "summon",
+  TOMB = "tomb",
+  DISCARD = "discard",
 }
+
+export enum eWho {
+  MY = "my",
+  OPPONENT = "opponent",
+}
+
+export type tCardInfo = {
+  
+  // つがいのid
+  readonly idFrontBack: string;
+
+  // 裏面の表示
+  readonly idImageBack: string;
+
+  // 位置
+  place: tPlace;
+
+  // デバッグ用
+  debug?: {
+    pair_id: number;
+    spell_id?: string;
+  }
+
+  // 追加情報
+  addInfo?: tCardAddInfo
+}
+
+export type tPlace = {
+  who?: eWho;
+  area: eCardArea;
+}
+
+export type tCardAddInfo = {
+
+  // つがいのid
+  readonly idFrontBack: string;
+
+
+  readonly pair_id: number;
+  readonly image_id: tImageId;
+  readonly cost: number;
+  readonly attack: number;
+  readonly spell_id?: string;
+}
+
+// export type tCardFullInfo = {
+
+//   idFrontBack: string;
+//   pair_id: number;
+
+//   image_id: tImageId;
+
+
+//   cost: number;
+//   attack: number;
+//   isMyCard: boolean;
+
+//   spell_id?: string;
+
+//   area: eCardArea;
+// }
 
 export type tImageId = {
   front: string;
@@ -34,29 +86,22 @@ export type tRule = {
   spellCount: number;
 }
 
-export type tPreference = {
-  cardBackId: string;
-}
-
-export type tCardKnownInfo = {
-  idFrontBack: string;
-  id: string;
-  isMyCard: boolean;
+// export type tCardKnownInfo = {
+//   idFrontBack: string;
+//   id: string;
+//   isMyCard: boolean;
   
-  idImageBack: string;
+//   idImageBack: string;
 
-  isSpellDeck: boolean;
+//   isSpellDeck: boolean;
 
-  debug?: {
-    pair_id: number;
-    spell_id?: string;
-  }
-}
+//   debug?: {
+//     pair_id: number;
+//     spell_id?: string;
+//   }
+// }
 
-export enum eMode {
-  LOCAL = "local",
-  ONLINE = "online",
-}
+
 
 export type tGameClient = {
   roomId: string;
@@ -66,32 +111,23 @@ export type tGameClient = {
 }
 
 export class GameClient {
-  private roomId: string;
-  private myId: string;
-  private opponentId: string;
+  private idGameClient: tGameClient;
   private _isMyTurn: boolean;
   private localServer: LocalServer;
 
-  public cssGameClient: CSSGameClient;
+  public memoryGameClient: MemoryGameClient;
+  public cssGameClient: CSSGameClient;  
 
-  public get isMyTurn(): boolean {
-    return this._isMyTurn;
-  }
-  
+  constructor(idGameClient: tGameClient) {
+    this.idGameClient = idGameClient;
 
-  constructor(gameClient: tGameClient) {
-    this.roomId = gameClient.roomId;
-    this.myId = gameClient.myId;
-    this.opponentId = gameClient.opponentId;
-    if(this.roomId.substring(0, 6) === "local-") {
-      this.localServer = new LocalServer(this.roomId, this.myId, this.opponentId);
+    if(this.idGameClient.roomId.substring(0, 6) === "local-") {
+      this.localServer = new LocalServer(this.idGameClient);
     }
 
-    this.cssGameClient = new CSSGameClient(gameClient, this.localServer);
+    this.memoryGameClient = new MemoryGameClient(this.idGameClient, this.localServer);
+    this.cssGameClient = new CSSGameClient(this.idGameClient, this.localServer);
 
-    this.fetchRule().then(rule => {
-      this._isMyTurn = rule.isMyTurn;
-    });
   }
 
   private async fetch(name:string): Promise<any> {
@@ -99,53 +135,37 @@ export class GameClient {
     return response.json();
   }
 
+  async postCardInfoPlaceAsync(cardIdFrontBack: string, place: tPlace): Promise<void> {
+    if(this.localServer) {
+      await this.localServer.postCardInfosAsync(cardIdFrontBack, place);
+    } else{
+      throw new Error("localServer is undefined");
+    }
+  }
 
-  async fetchShuffledCardKnownInfoAsync(): Promise<tCardKnownInfo[]> {
+
+  async fetchShuffledCardKnownInfoAsync(): Promise<tCardInfo[]> {
     if(this.localServer) {
       return await this.localServer.fetchShuffledCardKnownInfoAsync();
     } else{
-      return await this.fetch("shuffled-card-known-info") as tCardKnownInfo[];
+      return await [];
     }
   }
 
-  async fetchShuffledSpellKnownInfoAsync(): Promise<tCardKnownInfo[]> {
+  async fetchSpecificCardFullInfoAsync(idFrontBack: string): Promise<tCardAddInfo|undefined> {
     if(this.localServer) {
-      return await this.localServer.fetchShuffledSpellKnownInfoAsync();
+      return await this.localServer.fetchSpecificCardFullInfo(idFrontBack);
     } else{
-      return await this.fetch("shuffled-spell-known-info") as tCardKnownInfo[];
+      return await undefined;
     }
   }
 
-  async fetchSpecificCardFullInfo(idFrontBack: string): Promise<tCardFullInfo|undefined> {
+  async fetchRuleAsync(): Promise<tRule> {
     if(this.localServer) {
-      return this.localServer.fetchSpecificCardFullInfo(idFrontBack);
-    } else{
-      return await this.fetch("specific-card-full-info") as tCardFullInfo;
-    }
-  }
-
-  async fetchRule(): Promise<tRule> {
-    if(this.localServer) {
-      return this.localServer.fetchRule();
+      return await this.localServer.fetchRuleAsync();
     } else{
       return await this.fetch("rule") as tRule;
     }
   }
 
-  
-  async receiveOpponentCardFullInfo(cardPhases:tCardPhase[]): Promise<tCardFullInfo|undefined> {
-    if(this.localServer) {
-      return await this.localServer.receiveOpponentCardFullInfo(cardPhases);
-
-    } else {
-      const response = await fetch(`/api/game/opponent-card-full-info`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cardPhases }),
-      });
-      return response.json() as Promise<tCardFullInfo>;
-    }
-  }
 }

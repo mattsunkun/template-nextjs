@@ -1,22 +1,29 @@
 // components/Table.ts
 import Phaser from 'phaser';
-import { MemoryCardComponent } from './MemoryCardComponent';
-export class MemoryCardTableComponent {
+import { CardComponent } from '../CardComponent';
+
+
+
+export class TableCardBoardComponent {
   private scene: Phaser.Scene;
-  private cards: MemoryCardComponent[];
+  private _cardComponents: CardComponent[];
   private rows: number;
   private cols: number;
   private margin: number;
 
+  public get cardComponents(): CardComponent[] {
+    return this._cardComponents;
+  }
+
   constructor(
     scene: Phaser.Scene,
-    cards: MemoryCardComponent[],
+    cardComponents: CardComponent[],
     rows: number,
     cols: number,
     margin: number
   ) {
     this.scene = scene;
-    this.cards = cards;
+    this._cardComponents = cardComponents;
     this.rows = rows;
     this.cols = cols;
     this.margin = margin;
@@ -25,10 +32,10 @@ export class MemoryCardTableComponent {
   }
 
   private layoutCards() {
-    if (this.cards.length === 0) return;
+    if (this.cardComponents.length === 0) return;
 
-    const cardWidth = this.cards[0].size.width;
-    const cardHeight = this.cards[0].size.height;
+    const cardWidth = this.cardComponents[0].size.width;
+    const cardHeight = this.cardComponents[0].size.height;
 
     // 画面の中央座標を取得
     const centerX = this.scene.cameras.main.width / 2;
@@ -44,7 +51,7 @@ export class MemoryCardTableComponent {
 
     const mids = Math.floor(this.cols/2) - 2;
     let pos = 0;
-    for (let i = 0; i < this.cards.length; i++) {
+    for (let i = 0; i < this.cardComponents.length; i++) {
       const col = pos % this.cols;
 
       if(mids === col){
@@ -56,13 +63,13 @@ export class MemoryCardTableComponent {
       const x = startX + col * (cardWidth + this.margin);
       const y = startY + row * (cardHeight + this.margin);
 
-      this.cards[i].setPosition(x, y);
+      this.cardComponents[i].setPosition(x, y);
       pos ++;
     }
   }
 
   setInteractive(interactive: boolean = true) {
-    this.cards.forEach(card => {
+    this.cardComponents.forEach(card => {
       if (interactive) {
         card.setInteractive();
       } else {

@@ -1,5 +1,5 @@
 import { tSize } from "@/utils/types";
-import { HandCardComponent } from "./HandCardComponent";
+import { CardComponent } from "../CardComponent";
 
 export type tHandTablePosition = {
     x: number;
@@ -8,7 +8,7 @@ export type tHandTablePosition = {
 }
 
 export class HandCardTableComponent extends Phaser.GameObjects.Container {
-    private cards: HandCardComponent[] = [];
+    private cardComponent: CardComponent[] = [];
     private _size: tSize;
     private maxRotation: number = 60;
     private maxOffset: number = 100;
@@ -32,15 +32,15 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
         scene.add.existing(this);
     }
 
-    public setCards(handCardComponents: HandCardComponent[]): void {
+    public setCards(cardComponents: CardComponent[]): void {
         // 既存のカードをクリア
         // this.cards.forEach(card => card.destroy());
-        this.cards = [];
+        this.cardComponent = [];
         this.removeAll();
 
         // 新しいカードを追加
-        handCardComponents.forEach((handCardComponent, index, array) => {
-            const card = handCardComponent;
+        cardComponents.forEach((cardComponent, index, array) => {
+            const card = cardComponent;
 
             // カードの位置を計算
             const rotation = this.getCardRotation(index, array.length);
@@ -59,7 +59,7 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
                 card.setRotation(card.rotation + Math.PI);
             }
 
-            this.cards.push(card);
+            this.cardComponent.push(card);
             this.add(card);
         });
     }
@@ -105,7 +105,7 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
     // }
 
     public removeCards(idFrontBacks: string[]): void {
-        const remainingCards = this.cards.filter(card => 
+        const remainingCards = this.cardComponent.filter(card => 
             !idFrontBacks.some(idFrontBack => 
                 idFrontBack === card.cardInfo.idFrontBack
             )

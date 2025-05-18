@@ -1,8 +1,8 @@
 import { sleep, unexpectError } from "@/utils/functions";
 import { GameClient } from "../clients/GameClient";
+import { HandCardTableComponent } from "../components/boards/HandCardBoardComponent";
 import { CostLabelComponent } from "../components/css/CostLabelComponent";
 import { HandCardComponent } from "../components/css/HandCardComponent";
-import { HandCardTableComponent } from "../components/css/HandCardTableComponent";
 import { eGamePhase, eWho, PhaseManager } from "./PhaseManager";
 
 enum eCSSPhase {

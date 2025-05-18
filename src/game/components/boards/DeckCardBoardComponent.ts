@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import { MemoryCardComponent, MemoryCardStatus } from './MemoryCardComponent';
+import { CardComponent, CardStatus } from '../CardComponent';
 
-export class SpellCardDeckComponent {
+export class DeckCardBoardComponent {
   private scene: Phaser.Scene;
-  private cards: MemoryCardComponent[];
+  private cardComponents: CardComponent[];
   private x: number;
   private y: number;
 
@@ -11,22 +11,27 @@ export class SpellCardDeckComponent {
     scene: Phaser.Scene,
     x: number,
     y: number,
-    cards: MemoryCardComponent[]
+    cardComponents: CardComponent[]
   ) {
     this.scene = scene;
     this.x = x;
     this.y = y;
-    this.cards = cards;
+    this.cardComponents = cardComponents;
     this.displayCards();
   }
 
   private displayCards(): void {
     // カードを裏面で積み重ねて表示
-    this.cards.forEach((card, index) => {
+    this.cardComponents.forEach((card, index) => {
       card.setPosition(this.x, this.y);
       card.setDepth(index); // 後ろのカードが下に表示されるように
-      card.status = MemoryCardStatus.BACK
+      card.status = CardStatus.BACK
     });
+  }
+
+  public updateVisualizer(cardComponents: CardComponent[]): void {
+    this.cardComponents = cardComponents;
+    this.displayCards();
   }
 
   // // 一番上のカードを表にする
@@ -48,9 +53,9 @@ export class SpellCardDeckComponent {
   // }
 
   // 一番上のカードを取り除く
-  public removeTopCard(): MemoryCardComponent | undefined {
-    if (this.cards.length > 0) {
-      const topCard = this.cards.pop();
+  public removeTopCard(): CardComponent | undefined {
+    if (this.cardComponents.length > 0) {
+      const topCard = this.cardComponents.pop();
       topCard?.setInteractive(false);
       return topCard;
     }
