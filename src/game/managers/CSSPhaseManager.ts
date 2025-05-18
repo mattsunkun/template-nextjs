@@ -1,4 +1,4 @@
-import { unexpectError } from "@/utils/functions";
+import { sleep, unexpectError } from "@/utils/functions";
 import { GameClient } from "../clients/GameClient";
 import { CostLabelComponent } from "../components/css/CostLabelComponent";
 import { HandCardComponent } from "../components/css/HandCardComponent";
@@ -28,10 +28,11 @@ export class CSSPhaseManager {
         return this._phase;
     }
 
-    private set phase(newPhase: eCSSPhase) {
+    private async setPhase(newPhase: eCSSPhase) {
         this._phase = newPhase;
+        this.nextButton.setText(`Next: ${this.phase}`);
         if(!this.phaseManager.isMyTurn){
-            this.opponentTurn();
+            await this.opponentTurnAsync();
         }
         switch(this.phase){
             case eCSSPhase.COST:
@@ -40,10 +41,21 @@ export class CSSPhaseManager {
         }
     }
 
-    private opponentTurn(): void {
+    private async opponentTurnAsync(): Promise<void> {
         switch(this.phase){
             case eCSSPhase.COST:
-                
+                const opponentCostCard = await this.gameClient.cssGameClient.fetchOpponentCostCardAsync();
+                const cardPhase = this.phaseManager.cardPhases.find(cardPhase => cardPhase.info.cardFullInfo?.idFrontBack === opponentCostCard?.idFrontBack);
+                debugger;
+                if(opponentCostCard && cardPhase){
+                    this.opponentCostLabel.addCostChange(opponentCostCard.cost);
+                    await sleep(100);
+                    this.opponentCostLabel.applyCostChange();
+                    this.opponentHandTable.removeCards([opponentCostCard.idFrontBack]);
+                    cardPhase.status = eGamePhase.GAME_END;
+                }else{
+                    unexpectError(`opponentCostCard is undefined: ${opponentCostCard?.idFrontBack} cardPhase is undefined: ${cardPhase?.info.cardFullInfo?.idFrontBack}`);
+                }
                 break;
             case eCSSPhase.SUMMON:
                 break;
@@ -52,8 +64,42 @@ export class CSSPhaseManager {
         }
     }
 
-    private get selectedCards(): HandCardComponent[] {
-        return this._selectedCards;
+
+    private async handleNextClickAsync(): Promise<void> {
+
+        switch(this.phase){
+            case eCSSPhase.COST:
+                this.myCostLabel.applyCostChange();
+                await this.gameClient.cssGameClient.postMyCostUsedAsync(this.selectedCards.map(card => card.cardInfo.idFrontBack));
+                this.myHandTable.removeCards(this.selectedCards.map(card => card.cardInfo.idFrontBack));
+                break;
+            case eCSSPhase.SUMMON:
+                break;
+            case eCSSPhase.SPELL:
+                break;
+            case eCSSPhase.END:
+                unexpectError("END-Phase is not nextable");
+                break;
+        }
+        this.clearSelection();
+
+        if(this.phaseManager.isMyTurn){
+            await this.opponentTurnAsync();
+        }
+
+        switch(this.phase){
+            case eCSSPhase.COST:
+                await this.setPhase(eCSSPhase.SUMMON);
+                break;
+            case eCSSPhase.SUMMON:
+                await this.setPhase(eCSSPhase.SPELL);
+                break;
+            case eCSSPhase.SPELL:
+                await this.setPhase(eCSSPhase.END);
+                break;
+
+        }
+
     }
 
     private set selectedCards(newCards: HandCardComponent[]) {
@@ -65,7 +111,7 @@ export class CSSPhaseManager {
                 break;
         }
 
-this._selectedCards = newCards
+        this._selectedCards = newCards
 
         switch(this.phase){
             case eCSSPhase.COST:
@@ -73,6 +119,11 @@ this._selectedCards = newCards
                 break;
         }
     }
+
+    private get selectedCards(): HandCardComponent[] {
+        return this._selectedCards;
+    }
+
 
     constructor(phaseManager: PhaseManager) {
         this.phaseManager = phaseManager;
@@ -99,31 +150,33 @@ this._selectedCards = newCards
         this.opponentCostLabel = new CostLabelComponent(this.scene, myX + handTableWidth + 50, myY + handTableHeight/2, '相手のコスト\n');
 
         // Nextボタンの作成
-        this.nextButton = this.scene.add.text(screenWidth / 2, myY + handTableHeight + 50, 'Next', {
+        this.nextButton = this.scene.add.text(screenWidth / 2 + 50, myY + handTableHeight, 'Next', {
             fontSize: '32px',
-            color: '#ffffff',
-            backgroundColor: '#000000',
+            color: '#000000',
+            backgroundColor: '#ffffff',
             padding: { x: 20, y: 10 }
         })
         .setOrigin(0.5)
         .setInteractive()
-        .on('pointerdown', this.handleNextClick, this);
+        .on('pointerdown', this.handleNextClickAsync, this);
 
         this.setupCardInteractions();
         this.setHandTable();
 
-        this.phase = eCSSPhase.END;
-    }
+        this._phase = eCSSPhase.END;
 
-    public startPhase(){
-        this.myHandTable.setInteractive(true);
-        this.opponentHandTable.setInteractive(true);
-        this.setHandTable();
-        this.phase = eCSSPhase.COST;
         this.updateNextButtonVisibility();
     }
 
-    public endPhase(){
+    async startPhase(){
+        this.myHandTable.setInteractive(true);
+        this.opponentHandTable.setInteractive(true);
+        this.setHandTable();
+        await this.setPhase(eCSSPhase.COST);
+        this.updateNextButtonVisibility();
+    }
+
+    async endPhase(){
         this.myHandTable.setInteractive(false);
         this.opponentHandTable.setInteractive(false);
         this.nextButton.setVisible(false);
@@ -133,12 +186,13 @@ this._selectedCards = newCards
     private isSelectOk(card: HandCardComponent): boolean {
         switch(this.phase){
             case eCSSPhase.COST:
-                return (this.selectedCards.length === 0)
+                return (this.selectedCards.length === 0 && !card.cardInfo.isSpellDeck)
             case eCSSPhase.SUMMON:
                 return (this.selectedCards.length === 1)
             case eCSSPhase.SPELL:
                 return (this.selectedCards.length === 1)
             case eCSSPhase.END:
+                debugger;
                 unexpectError("END-Phase is not selectable");
                 return false;
         }
@@ -153,13 +207,11 @@ this._selectedCards = newCards
             case eCSSPhase.SPELL:
                 return true;
             case eCSSPhase.END:
-                unexpectError("END-Phase is not submitable");
                 return false;
         }
     }
 
     private handleCardClick(card: HandCardComponent): void {
-        console.log('card clicked', card);
         const index = this.selectedCards.indexOf(card);
         
         if (index !== -1) {
@@ -209,44 +261,9 @@ this._selectedCards = newCards
     }
 
     private updateNextButtonVisibility(): void {
-
         this.nextButton.setVisible(this.isSubmitOk());
     }
 
-    private handleNextClick(): void {
-
-        switch(this.phase){
-            case eCSSPhase.COST:
-                this.myCostLabel.applyCostChange();
-                break;
-            case eCSSPhase.SUMMON:
-                break;
-            case eCSSPhase.SPELL:
-                break;
-            case eCSSPhase.END:
-                unexpectError("END-Phase is not nextable");
-                break;
-        }
-        this.clearSelection();
-
-        if(this.phaseManager.isMyTurn){
-            this.opponentTurn();
-        }
-
-        switch(this.phase){
-            case eCSSPhase.COST:
-                this.phase = eCSSPhase.SUMMON;
-                break;
-            case eCSSPhase.SUMMON:
-                this.phase = eCSSPhase.SPELL;
-                break;
-            case eCSSPhase.SPELL:
-                this.phase = eCSSPhase.END;
-                break;
-
-        }
-
-    }
 
     public getSelectedCards(): HandCardComponent[] {
         return this.selectedCards;

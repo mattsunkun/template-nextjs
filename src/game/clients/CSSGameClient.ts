@@ -10,18 +10,18 @@ export class CSSGameClient  {
         this.localServer = localServer;
     }
 
-    public async fetchOpponentCostCardAsync(): Promise<tCardFullInfo> {
+    public async fetchOpponentCostCardAsync(): Promise<tCardFullInfo|undefined> {
         if(this.localServer) {
-            const response = await this.localServer.fetchOpponentCostCardAsync();
-            return response.card;
+            return await this.localServer.fetchOpponentCostCardAsync();
         } else {
             throw new Error("LocalServer is undefined");
+            return undefined;
         }
     }
 
-    public async postMyCostCardAsync(card: tCardFullInfo): Promise<void> {
+    public async postMyCostUsedAsync(cardIdFrontBacks: string[]): Promise<void> {
         if(this.localServer) {
-            await this.localServer.postMyCostCardAsync(card);
+            await this.localServer.postMyCostCardAsync(cardIdFrontBacks);
         } else {
             throw new Error("LocalServer is undefined");
         }

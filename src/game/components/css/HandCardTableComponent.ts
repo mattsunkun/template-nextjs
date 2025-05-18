@@ -34,7 +34,7 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
 
     public setCards(handCardComponents: HandCardComponent[]): void {
         // 既存のカードをクリア
-        this.cards.forEach(card => card.destroy());
+        // this.cards.forEach(card => card.destroy());
         this.cards = [];
         this.removeAll();
 
@@ -79,11 +79,11 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
         return this._size;
     }
 
-    public destroy(): void {
-        this.cards.forEach(card => card.destroy());
-        this.cards = [];
-        super.destroy();
-    }
+    // public destroy(): void {
+    //     this.cards.forEach(card => card.destroy());
+    //     this.cards = [];
+    //     super.destroy();
+    // }
 
     public setInteractive(interactive: boolean = true): this {
         if (interactive) {
@@ -92,5 +92,24 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
             this.disableInteractive();
         }
         return this;
+    }
+
+    // public removeCardByIdFrontBack(idFrontBack: string): void {
+    //     const cardIndex = this.cards.findIndex(card => card.cardInfo.idFrontBack === idFrontBack);
+    //     if (cardIndex !== -1) {
+    //         const card = this.cards[cardIndex];
+    //         card.destroy();
+    //         this.cards.splice(cardIndex, 1);
+    //         this.remove(card);
+    //     }
+    // }
+
+    public removeCards(idFrontBacks: string[]): void {
+        const remainingCards = this.cards.filter(card => 
+            !idFrontBacks.some(idFrontBack => 
+                idFrontBack === card.cardInfo.idFrontBack
+            )
+        );
+        this.setCards(remainingCards);
     }
 } 

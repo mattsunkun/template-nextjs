@@ -367,6 +367,8 @@ export class LocalServer {
   private discardedPairCards: tCardFullInfo[];
   private spellKnownInfos: tCardKnownInfo[];
   private spellFullInfos: tCardFullInfo[];
+  private cardPhases: tCardPhase[];
+
   public get isMyTurn(): boolean {
     return this.rule.isMyTurn;
   }
@@ -379,6 +381,7 @@ export class LocalServer {
     this.discardedCards = [];
     this.discardedPairCards = [];
 
+    this.cardPhases = [];
     this.createRule();
     this.createCard();
     this.createSpell();
@@ -420,6 +423,7 @@ export class LocalServer {
         };
         this.spellKnownInfos.push(known);
         this.spellFullInfos.push(full);
+        this.cardPhases.push({info: {cardKnownInfo: known, cardFullInfo: full}, status: eGamePhase.MEMORY_GAME});
       }
     }
   }
@@ -462,6 +466,7 @@ export class LocalServer {
         };
         this.cardKnownInfos.push(known);
         this.cardFullInfos.push(full);
+        this.cardPhases.push({info: {cardKnownInfo: known, cardFullInfo: full}, status: eGamePhase.MEMORY_GAME});
       }
     }
 
@@ -644,7 +649,6 @@ getCheatingPairCard(cardPhases: tCardPhase[]): tCardFullInfo | undefined {
                cardFull.idFrontBack !== selectedCardFull?.idFrontBack;
     });
     if(pairCards.length === 0){
-      debugger;
       unexpectError("pairCards is empty");
       return undefined;
     }
@@ -672,9 +676,19 @@ getCheatingPairCard(cardPhases: tCardPhase[]): tCardFullInfo | undefined {
     return undefined;
   }
 
-  public async postMyCostCardAsync(card: tCardFullInfo): Promise<void> {
-    if(this.selectedRandomCard) {
-      // return this.selectedRandomCard;
+  public async postMyCostCardAsync(cardIdFrontBacks: string[]): Promise<void> {
+    const cardMyCostCards = this.cardFullInfos.filter(card => !cardIdFrontBacks.includes(card.idFrontBack));
+    if(cardMyCostCards){
+      cardMyCostCards.forEach(card => {
+        const cardPhase = this.cardPhases.find(phase => phase.info.cardFullInfo?.idFrontBack === card.idFrontBack);
+        if(cardPhase){
+          cardPhase.status = eGamePhase.GAME_END;
+        }else{
+          unexpectError("cardPhase is undefined");
+        }
+      });
+    }else{
+      unexpectError("cardMyCostCards is empty");
     }
   }
 

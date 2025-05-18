@@ -181,6 +181,7 @@ export class MemoryPhaseManager {
             const spell = this.opponentSpellCardDeck.removeTopCard();
             if(spell){
                 spell.cardFullInfo = await this.gameClient.fetchSpecificCardFullInfo(spell.cardKnownInfo.idFrontBack);
+                
                 spell.status = MemoryCardStatus.MATCHED;
                 this.phaseManager.updateCardPhase(spell.cardKnownInfo.idFrontBack, eWho.OPPONENT, eGamePhase.COST_SUMMON_SPELL, spell.cardFullInfo);
             }else{
