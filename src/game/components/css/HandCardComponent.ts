@@ -1,5 +1,7 @@
+import { eAssetFolderType } from "@/game/servers/LocalServer";
+import { getLoadKey } from "@/utils/functions";
 import { tSize } from "@/utils/types";
-import { tCardFullInfo, tCardKnownInfo } from "../clients/GameClient";
+import { tCardFullInfo, tCardKnownInfo } from "../../clients/GameClient";
 
 export class HandCardComponent extends Phaser.GameObjects.Container {
     private frontImage: Phaser.GameObjects.Image;
@@ -15,8 +17,8 @@ export class HandCardComponent extends Phaser.GameObjects.Container {
         this.cardFullInfo = cardFullInfo;
 
         // 画像オブジェクトの初期化
-        this.backImage = scene.add.image(0, 0, `card_back/${cardKnownInfo.team}/`);
-        this.frontImage = scene.add.image(0, 0, cardFullInfo ? `card_front/${cardFullInfo.team}/${cardFullInfo.pair_id}` : '');
+        this.backImage = scene.add.image(0, 0, getLoadKey(eAssetFolderType.BACK, cardKnownInfo.idImageBack));
+        this.frontImage = scene.add.image(0, 0, getLoadKey(eAssetFolderType.FRONT, cardFullInfo.image_id.front));
         
         // サイズの設定
         this.backImage.setDisplaySize(size.width, size.height);
@@ -27,16 +29,30 @@ export class HandCardComponent extends Phaser.GameObjects.Container {
         this.setSize(size.width, size.height);
 
         // インタラクティブの設定
-        this.setInteractive();
+        this.setInteractive(true);
         this.setupInteractions();
 
         scene.add.existing(this);
     }
 
+    private isInteractive: boolean;
+    public setInteractive(interactive: boolean = true): this {
+        this.isInteractive = interactive;
+        if (interactive) {
+            super.setInteractive();
+        } else {
+            this.disableInteractive();
+        }
+        return this;
+    }
+
+
+
     private setupInteractions(): void {
-        this.on("pointerdown", () => {
-            this.emit("cardClicked", this);
-        });
+        if(this.isInteractive){
+            this.on("pointerdown", () => {
+                this.emit("cardClicked", this);
+            });
 
         this.on("pointerover", () => {
             this.scene.input.setDefaultCursor("pointer");
@@ -45,6 +61,7 @@ export class HandCardComponent extends Phaser.GameObjects.Container {
         this.on("pointerout", () => {
             this.scene.input.setDefaultCursor("default");
         });
+    }
     }
 
     public get size(): tSize {

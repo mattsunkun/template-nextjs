@@ -52,7 +52,11 @@ export class GameStart extends Scene {
         // プレイヤーとCPUのGameClientを生成
         const isMyTurn = Math.random() < 0.5;
 
-        const gameClient = new GameClient(this.roomId, this.myId, this.opponentId);
+        const gameClient = new GameClient({
+            roomId: this.roomId,
+            myId: this.myId,
+            opponentId: this.opponentId
+        });
 
         // 通常の神経衰弱ゲームシーンに遷移
         this.scene.start('GameScene', gameClient);

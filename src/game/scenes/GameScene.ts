@@ -1,8 +1,8 @@
+import { loadCardAssetsByType } from '@/utils/functions';
 import { Scene } from 'phaser';
-
 import { GameClient, tRule } from '../clients/GameClient';
 import { PhaseManager } from '../managers/PhaseManager';
-import { _allPairCount, _teams } from '../servers/MockServer';
+import { eAssetFolderType, myMemoryCardInfos, mySpellCardInfos, opponentMemoryCardInfos, opponentSpellCardInfos } from '../servers/LocalServer';
 
 export class GameScene extends Scene
 {
@@ -24,12 +24,27 @@ export class GameScene extends Scene
     }
 
     preload(){
-        for (const team of _teams) {
-            this.load.image(`card_back/${team}/`, `assets/card_back/${team}.png`);
-            for (let i = 0; i <= _allPairCount; i++) {
-              this.load.image(`card_front/${team}/${i}`, `assets/card_front/${team}/${i}.png`);
-            }
-        }
+        // 基本的なカードアセットを読み込む
+
+        // メモリーカードの画像を読み込む
+        [...myMemoryCardInfos, ...opponentMemoryCardInfos].forEach(cardInfo => {
+            // 表面画像
+            loadCardAssetsByType(this, eAssetFolderType.FRONT, [cardInfo.front]);
+            // 裏面画像
+            loadCardAssetsByType(this, eAssetFolderType.BACK, [cardInfo.back]);
+            // 実物画像
+            loadCardAssetsByType(this, eAssetFolderType.REAL, [cardInfo.real]);
+        });
+
+        // スペルカードの画像を読み込む
+        [...mySpellCardInfos, ...opponentSpellCardInfos].forEach(cardInfo => {
+            // 表面画像
+            loadCardAssetsByType(this, eAssetFolderType.FRONT, [cardInfo.front]);
+            // 裏面画像
+            loadCardAssetsByType(this, eAssetFolderType.BACK, [cardInfo.back]);
+            // 実物画像
+            loadCardAssetsByType(this, eAssetFolderType.REAL, [cardInfo.real]);
+        });
     }
 
     async create ()

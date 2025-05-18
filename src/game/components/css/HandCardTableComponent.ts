@@ -1,5 +1,4 @@
 import { tSize } from "@/utils/types";
-import { tCardFullInfo, tCardKnownInfo } from "../clients/GameClient";
 import { HandCardComponent } from "./HandCardComponent";
 
 export type tHandTablePosition = {
@@ -14,44 +13,41 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
     private maxRotation: number = 60;
     private maxOffset: number = 100;
     private tablePosition: tHandTablePosition;
-    private isOpposite: boolean;
+    private isOpponent: boolean;
 
     constructor(
         scene: Phaser.Scene, 
         position: tHandTablePosition,
-        opposite: boolean
+        isOpponent: boolean
     ) {
         super(scene);
         this._size = position.size;
         this.tablePosition = position;
-        this.isOpposite = opposite;
+        this.isOpponent = isOpponent;
         
         // コンテナの位置を設定
         this.setPosition(position.x, position.y);
+        // コンテナのサイズを設定
+        this.setSize(position.size.width, position.size.height);
         scene.add.existing(this);
     }
 
-    public setCards(cardInfos: { known: tCardKnownInfo; full: tCardFullInfo }[]): void {
+    public setCards(handCardComponents: HandCardComponent[]): void {
         // 既存のカードをクリア
         this.cards.forEach(card => card.destroy());
         this.cards = [];
         this.removeAll();
 
         // 新しいカードを追加
-        cardInfos.forEach((info, index) => {
-            const card = new HandCardComponent(
-                this.scene,
-                info.known,
-                info.full,
-                { width: 100, height: 150 }
-            );
+        handCardComponents.forEach((handCardComponent, index, array) => {
+            const card = handCardComponent;
 
             // カードの位置を計算
-            const rotation = this.getCardRotation(index, cardInfos.length);
-            const offset = this.getCardPosition(index, cardInfos.length);
+            const rotation = this.getCardRotation(index, array.length);
+            const offset = this.getCardPosition(index, array.length);
 
             // カードの配置
-            const yPosition = this.isOpposite ? 50 : this.tablePosition.size.height - 50;
+            const yPosition = this.isOpponent ? 50 : this.tablePosition.size.height - 50;
             card.setPosition(
                 this.tablePosition.size.width / 2 + offset,
                 yPosition
@@ -59,7 +55,7 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
             card.setRotation(Phaser.Math.DegToRad(rotation));
             
             // カードの絵柄を180度回転
-            if (this.isOpposite) {
+            if (this.isOpponent) {
                 card.setRotation(card.rotation + Math.PI);
             }
 
@@ -71,7 +67,7 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
     private getCardRotation(index: number, totalCards: number): number {
         const angleStep = this.maxRotation / (totalCards - 1 || 1);
         const baseRotation = -this.maxRotation / 2 + angleStep * index;
-        return this.isOpposite ? -baseRotation : baseRotation;
+        return this.isOpponent ? -baseRotation : baseRotation;
     }
 
     private getCardPosition(index: number, totalCards: number): number {
@@ -87,5 +83,14 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
         this.cards.forEach(card => card.destroy());
         this.cards = [];
         super.destroy();
+    }
+
+    public setInteractive(interactive: boolean = true): this {
+        if (interactive) {
+            super.setInteractive();
+        } else {
+            this.disableInteractive();
+        }
+        return this;
     }
 } 

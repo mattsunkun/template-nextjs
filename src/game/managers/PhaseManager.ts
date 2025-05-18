@@ -1,6 +1,6 @@
 import { unexpectError } from '@/utils/functions';
 import { GameClient, tCardFullInfo, tCardKnownInfo } from '../clients/GameClient';
-import { HandCardTableComponent } from "../components/HandCardTableComponent";
+import { HandCardTableComponent } from "../components/css/HandCardTableComponent";
 import { TextLabel } from '../components/utils/TextLabel';
 import { CSSPhaseManager } from './CSSPhaseManager';
 import { MemoryPhaseManager } from './MemoryPhaseManager';
@@ -44,6 +44,7 @@ export class PhaseManager {
     public cssPhaseManager: CSSPhaseManager;
     public gameClient: GameClient;
     public cardPhases: tCardPhase[];
+    public spellCardPhases: tCardPhase[];
     public handTable: HandCardTableComponent;
 
     constructor(scene: Phaser.Scene, gameClient:GameClient) {
@@ -60,11 +61,22 @@ export class PhaseManager {
         const defaultWho = undefined;
 
 
-        const cardKnownInfo = await this.gameClient.fetchShuffledCardKnownInfo();
+        const cardKnownInfo = await this.gameClient.fetchShuffledCardKnownInfoAsync();
         this.cardPhases = cardKnownInfo.map((cardKnownInfo) => {
             return {
                 info: {
                     cardKnownInfo: cardKnownInfo,
+                    cardFullInfo: undefined
+                },
+                status: defaultPhase, 
+                who: defaultWho, 
+            }
+        });
+        const spellCardKnownInfo = await this.gameClient.fetchShuffledSpellKnownInfoAsync();
+        this.spellCardPhases = spellCardKnownInfo.map((spellCardKnownInfo) => {
+            return {
+                info: {
+                    cardKnownInfo: spellCardKnownInfo,
                     cardFullInfo: undefined
                 },
                 status: defaultPhase, 
@@ -85,7 +97,7 @@ export class PhaseManager {
     }
 
     public updateCardPhase(cardIdFrontBack: string, who:eWho, status: eGamePhase,cardFullInfo?:tCardFullInfo) {
-        const cardPhase = this.cardPhases.find(card => card.info.cardKnownInfo.idFrontBack === cardIdFrontBack);
+        const cardPhase = [...this.cardPhases, ...this.spellCardPhases].find(card => card.info.cardKnownInfo.idFrontBack === cardIdFrontBack);
         if (cardPhase) {
             cardPhase.status = status;
             cardPhase.info.cardFullInfo = cardFullInfo;

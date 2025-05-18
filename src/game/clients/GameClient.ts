@@ -1,5 +1,6 @@
 import { tCardPhase } from "../managers/PhaseManager";
-import { LocalServer } from "../servers/MockServer";
+import { LocalServer } from "../servers/LocalServer";
+import { CSSGameClient } from "./CSSGameClient";
 
 export type tCardFullInfo = {
   id: string;
@@ -12,20 +13,25 @@ export type tCardFullInfo = {
 
   cost: number;
   attack: number;
-  team: string;
+  isMyCard: boolean;
+
+  spell_id?: string;
+
+  isSpellDeck: boolean;
 }
 
 export type tImageId = {
   front: string;
   real: string;
+  back: string;
 }
 
 export type tRule = {
   isMyTurn: boolean;
-  teams: string[];
   allPairCount: number;
   disCardPairCount: number;
   usePairCount: number;
+  spellCount: number;
 }
 
 export type tPreference = {
@@ -35,16 +41,28 @@ export type tPreference = {
 export type tCardKnownInfo = {
   idFrontBack: string;
   id: string;
-  team: string;
+  isMyCard: boolean;
+  
+  idImageBack: string;
+
+  isSpellDeck: boolean;
 
   debug?: {
     pair_id: number;
+    spell_id?: string;
   }
 }
 
 export enum eMode {
   LOCAL = "local",
   ONLINE = "online",
+}
+
+export type tGameClient = {
+  roomId: string;
+  myId: string;
+  opponentId: string;
+  
 }
 
 export class GameClient {
@@ -54,18 +72,22 @@ export class GameClient {
   private _isMyTurn: boolean;
   private localServer: LocalServer;
 
+  public cssGameClient: CSSGameClient;
+
   public get isMyTurn(): boolean {
     return this._isMyTurn;
   }
   
 
-  constructor(roomId: string, myId: string, opponentId: string) {
-    this.roomId = roomId;
-    this.myId = myId;
-    this.opponentId = opponentId;
+  constructor(gameClient: tGameClient) {
+    this.roomId = gameClient.roomId;
+    this.myId = gameClient.myId;
+    this.opponentId = gameClient.opponentId;
     if(this.roomId.substring(0, 6) === "local-") {
       this.localServer = new LocalServer(this.roomId, this.myId, this.opponentId);
     }
+
+    this.cssGameClient = new CSSGameClient(gameClient, this.localServer);
 
     this.fetchRule().then(rule => {
       this._isMyTurn = rule.isMyTurn;
@@ -78,11 +100,19 @@ export class GameClient {
   }
 
 
-  async fetchShuffledCardKnownInfo(): Promise<tCardKnownInfo[]> {
+  async fetchShuffledCardKnownInfoAsync(): Promise<tCardKnownInfo[]> {
     if(this.localServer) {
-      return this.localServer.fetchShuffledCardKnownInfo();
+      return await this.localServer.fetchShuffledCardKnownInfoAsync();
     } else{
       return await this.fetch("shuffled-card-known-info") as tCardKnownInfo[];
+    }
+  }
+
+  async fetchShuffledSpellKnownInfoAsync(): Promise<tCardKnownInfo[]> {
+    if(this.localServer) {
+      return await this.localServer.fetchShuffledSpellKnownInfoAsync();
+    } else{
+      return await this.fetch("shuffled-spell-known-info") as tCardKnownInfo[];
     }
   }
 

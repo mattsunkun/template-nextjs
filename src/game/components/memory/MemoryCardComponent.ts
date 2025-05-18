@@ -1,5 +1,7 @@
+import { eAssetFolderType } from "@/game/servers/LocalServer";
+import { getLoadKey } from "@/utils/functions";
 import { tSize } from "@/utils/types";
-import { tCardFullInfo, tCardKnownInfo } from "../clients/GameClient";
+import { tCardFullInfo, tCardKnownInfo } from "../../clients/GameClient";
 
 export enum MemoryCardStatus {
   FRONT = "front",
@@ -16,23 +18,24 @@ export class MemoryCardComponent extends Phaser.GameObjects.Container {
     private _status: MemoryCardStatus;
     private _size: tSize;
 
-    constructor(scene: Phaser.Scene, cardKnownInfo: tCardKnownInfo, cardFullInfo?: tCardFullInfo, size:tSize = { width: 100, height: 150 }) {
+    constructor(scene: Phaser.Scene, size:tSize,cardKnownInfo: tCardKnownInfo, cardFullInfo?: tCardFullInfo,label:string = "") {
         super(scene);
         this._size = size;
 
         // 画像オブジェクトの初期化
-        this.backImage = scene.add.image(0, 0, `card_back/${cardKnownInfo.team}/`);
-        this.frontImage = scene.add.image(0, 0, cardFullInfo ? `card_front/${cardFullInfo.team}/${cardFullInfo.pair_id}` : '');
+        this.backImage = scene.add.image(0, 0, getLoadKey(eAssetFolderType.BACK, cardKnownInfo.idImageBack));
+        this.frontImage = scene.add.image(0, 0, getLoadKey(eAssetFolderType.FRONT, cardFullInfo?.image_id.front ?? ""));
         
         // サイズの設定
         this.backImage.setDisplaySize(size.width, size.height);
         this.frontImage.setDisplaySize(size.width, size.height);
         
         // ラベルの初期化
-        this.label = scene.add.text(0, 0, `debug\n ${cardKnownInfo.debug?.pair_id.toString() ?? ""}`, {
+        this.label = scene.add.text(0, 0, `debug\n${label}`, {
             fontSize: '32px',
             color: '#fff',
-            backgroundColor: '#000'
+            backgroundColor: '#000', 
+            align: 'center',
         }).setOrigin(0.5);
 
         // カード情報の設定
@@ -94,7 +97,7 @@ export class MemoryCardComponent extends Phaser.GameObjects.Container {
 
     public set cardKnownInfo(cardKnownInfo: tCardKnownInfo) {
         this._cardKnownInfo = cardKnownInfo;
-        this.backImage.setTexture(`card_back/${cardKnownInfo.team}/`);
+        this.backImage.setTexture(getLoadKey(eAssetFolderType.BACK, cardKnownInfo.idImageBack));
     }
 
     public get cardFullInfo(): tCardFullInfo|undefined {
@@ -104,7 +107,7 @@ export class MemoryCardComponent extends Phaser.GameObjects.Container {
     public set cardFullInfo(cardFullInfo: tCardFullInfo|undefined) {
         this._cardFullInfo = cardFullInfo;
         if (cardFullInfo) {
-            this.frontImage.setTexture(`card_front/${cardFullInfo.team}/${cardFullInfo.pair_id}`);
+            this.frontImage.setTexture(getLoadKey(eAssetFolderType.FRONT, cardFullInfo.image_id.front));
             this.frontImage.setDisplaySize(this.size.width, this.size.height);
         }
     }

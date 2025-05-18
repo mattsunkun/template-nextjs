@@ -1,7 +1,7 @@
 // components/Table.ts
 import Phaser from 'phaser';
 import { MemoryCardComponent } from './MemoryCardComponent';
-export class Table {
+export class MemoryCardTableComponent {
   private scene: Phaser.Scene;
   private cards: MemoryCardComponent[];
   private rows: number;
@@ -42,14 +42,22 @@ export class Table {
     const startX = centerX - totalWidth / 2 + cardWidth / 2;
     const startY = centerY - totalHeight / 2 + cardHeight / 2;
 
+    const mids = Math.floor(this.cols/2) - 2;
+    let pos = 0;
     for (let i = 0; i < this.cards.length; i++) {
-      const col = i % this.cols;
-      const row = Math.floor(i / this.cols);
+      const col = pos % this.cols;
+
+      if(mids === col){
+        pos += 2;
+      }
+
+      const row = Math.floor(pos / this.cols);
 
       const x = startX + col * (cardWidth + this.margin);
       const y = startY + row * (cardHeight + this.margin);
 
       this.cards[i].setPosition(x, y);
+      pos ++;
     }
   }
 
