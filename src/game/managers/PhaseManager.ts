@@ -1,5 +1,4 @@
 import { GameClient, tCardInfo, tPlace, tRule } from '../clients/GameClient';
-import { HandCardTableComponent } from "../components/boards/HandCardBoardComponent";
 import { TextLabel } from '../components/utils/TextLabel';
 import { CSSPhaseManager } from './CSSPhaseManager';
 import { MemoryPhaseManager } from './MemoryPhaseManager';
@@ -25,7 +24,6 @@ export class PhaseManager {
     private cssPhaseManager: CSSPhaseManager;
     public gameClient: GameClient;
     public cardInfos: tCardInfo[];
-    public handTable: HandCardTableComponent;
     private rule:tRule;
 
     constructor(scene: Phaser.Scene, gameClient:GameClient) {
@@ -42,7 +40,7 @@ export class PhaseManager {
 
 
         this.memoryPhaseManager = new MemoryPhaseManager({phaseManager: this});
-        // this.cssPhaseManager = new CSSPhaseManager(this);
+        this.cssPhaseManager = new CSSPhaseManager(this);
 
 
         this.createLabelText();
@@ -63,13 +61,14 @@ export class PhaseManager {
         }
       });
 
-      this.updateVisualizer();
+    this.updateVisualizer();
       await this.gameClient.postCardInfoPlaceAsync(cardIdFrontBack, place);
         
     }
 
     private updateVisualizer(){
       this.memoryPhaseManager.updateVisualizer();
+      this.cssPhaseManager.updateVisualizer();
     }
     
 
@@ -108,14 +107,13 @@ export class PhaseManager {
         this.memoryPhaseManager.startPhaseAsync();
         break;
       case eGamePhase.COST_SUMMON_SPELL:
-        this.memoryPhaseManager.endPhase();
-        this.cssPhaseManager.startPhase();
+        this.memoryPhaseManager.endPhaseAsync();
+        this.cssPhaseManager.startPhaseAsync();
         break;
     }
   }
 
   public nextTurn():boolean {
-    // debugger
 
     this.isMyTurn = !this.isMyTurn;
 

@@ -1,9 +1,12 @@
-import { sleep, unexpectError } from "@/utils/functions";
-import { GameClient } from "../clients/GameClient";
-import { HandCardTableComponent } from "../components/boards/HandCardBoardComponent";
+import { errorNum } from "@/utils/const";
+import { unexpectError } from "@/utils/functions";
+import { tSize } from "@/utils/types";
+import { eCardArea, eWho, tCardAddInfo } from "../clients/GameClient";
+import { HandCardBoardComponent } from "../components/boards/HandCardBoardComponent";
+import { CardComponent, CardStatus } from "../components/CardComponent";
 import { CostLabelComponent } from "../components/css/CostLabelComponent";
-import { HandCardComponent } from "../components/css/HandCardComponent";
-import { eGamePhase, eWho, PhaseManager } from "./PhaseManager";
+import { AbstractSubManager } from "./AbstractSubManager";
+import { PhaseManager } from "./PhaseManager";
 
 enum eCSSPhase {
     COST = "COST-Phase",
@@ -12,25 +15,32 @@ enum eCSSPhase {
     END = "END-Phase"
 }
 
-export class CSSPhaseManager {
+export class CSSPhaseManager extends AbstractSubManager {
     private scene: Phaser.Scene;
     private phaseManager: PhaseManager;
-    private gameClient: GameClient;
-    private myHandTable: HandCardTableComponent;
-    private opponentHandTable: HandCardTableComponent;
-    private _selectedCards: HandCardComponent[] = [];
+    private cardSize: tSize;
+
+    private myHand: HandCardBoardComponent;
+    private opponentHand: HandCardBoardComponent;
     private myCostLabel: CostLabelComponent;
     private opponentCostLabel: CostLabelComponent;
     private nextButton: Phaser.GameObjects.Text;
-    private _phase: eCSSPhase;
 
+    private _phase: eCSSPhase;
+    private _selectedCards: CardComponent[] = [];
+
+    private get costSign(): number {
+        return this.phase === eCSSPhase.COST ? 1 : -1;
+    }
+
+    
     private get phase(): eCSSPhase {
         return this._phase;
     }
 
     private async setPhase(newPhase: eCSSPhase) {
         this._phase = newPhase;
-        this.nextButton.setText(`Next: ${this.phase}`);
+        this.nextButton.setText(`Finish: ${this.phase}`);
         if(!this.phaseManager.isMyTurn){
             await this.opponentTurnAsync();
         }
@@ -41,46 +51,49 @@ export class CSSPhaseManager {
         }
     }
 
+    public updateVisualizer(): void {
+        this.setHandTable();
+    }
+
     private async opponentTurnAsync(): Promise<void> {
+        let opponentCards: tCardAddInfo[] = [];
         switch(this.phase){
             case eCSSPhase.COST:
-                const opponentCostCard = await this.gameClient.cssGameClient.fetchOpponentCostCardAsync();
-                const cardPhase = this.phaseManager.cardPhases.find(cardPhase => cardPhase.info.cardFullInfo?.idFrontBack === opponentCostCard?.idFrontBack);
-                debugger;
-                if(opponentCostCard && cardPhase){
-                    this.opponentCostLabel.addCostChange(opponentCostCard.cost);
-                    await sleep(100);
-                    this.opponentCostLabel.applyCostChange();
-                    this.opponentHandTable.removeCards([opponentCostCard.idFrontBack]);
-                    cardPhase.status = eGamePhase.GAME_END;
-                }else{
-                    unexpectError(`opponentCostCard is undefined: ${opponentCostCard?.idFrontBack} cardPhase is undefined: ${cardPhase?.info.cardFullInfo?.idFrontBack}`);
-                }
+                opponentCards = await this.phaseManager.gameClient.cssGameClient.fetchOpponentCostCardsAsync();
                 break;
             case eCSSPhase.SUMMON:
+                opponentCards = await this.phaseManager.gameClient.cssGameClient.fetchOpponentSummonCardsAsync();
                 break;
             case eCSSPhase.SPELL:
+                opponentCards = await this.phaseManager.gameClient.cssGameClient.fetchOpponentSpellCardsAsync();
                 break;
         }
+        opponentCards?.forEach((opponentCard) => {
+            this.opponentCostLabel.addCostChange(opponentCard.cost * this.costSign);
+            this.opponentCostLabel.applyCostChange();
+            this.opponentCostLabel.clearCostChange();
+            this.opponentHand.removeCards([opponentCard.idFrontBack]);
+            this.phaseManager.updateCardPlace(opponentCard.idFrontBack, {area: eCardArea.TOMB, who: eWho.OPPONENT});
+
+        }
+
+)
+            
     }
 
 
     private async handleNextClickAsync(): Promise<void> {
+        this.selectedCards.forEach((card) => {
+            console.log("呪文発動", card.cardInfo.addInfo?.spell_id);
+        })
 
-        switch(this.phase){
-            case eCSSPhase.COST:
-                this.myCostLabel.applyCostChange();
-                await this.gameClient.cssGameClient.postMyCostUsedAsync(this.selectedCards.map(card => card.cardInfo.idFrontBack));
-                this.myHandTable.removeCards(this.selectedCards.map(card => card.cardInfo.idFrontBack));
-                break;
-            case eCSSPhase.SUMMON:
-                break;
-            case eCSSPhase.SPELL:
-                break;
-            case eCSSPhase.END:
-                unexpectError("END-Phase is not nextable");
-                break;
-        }
+// コストの変化を適用
+        this.myCostLabel.applyCostChange();       
+        this.selectedCards.forEach((card) => {
+            this.phaseManager.updateCardPlace(card.cardInfo.idFrontBack, {area: eCardArea.TOMB, who: eWho.MY});
+        })
+        this.myHand.removeCards([...this.selectedCards.map(card => card.cardInfo.idFrontBack)]);
+
         this.clearSelection();
 
         if(this.phaseManager.isMyTurn){
@@ -102,37 +115,27 @@ export class CSSPhaseManager {
 
     }
 
-    private set selectedCards(newCards: HandCardComponent[]) {
-        switch(this.phase){
-            case eCSSPhase.COST:
-                this.myCostLabel.addCostChange(-this._selectedCards.reduce((sum, card) => sum + card.fullInfo.cost, 0));
-                break;
-            case eCSSPhase.SUMMON:
-                break;
-        }
+    private set selectedCards(newCards: CardComponent[]) {
+        this.myCostLabel.addCostChange(-this.costSign * this._selectedCards.reduce((sum, card) => sum + (card.cardInfo.addInfo?.cost ?? errorNum), 0));
 
         this._selectedCards = newCards
-
-        switch(this.phase){
-            case eCSSPhase.COST:
-                this.myCostLabel.addCostChange(+newCards.reduce((sum, card) => sum + card.fullInfo.cost, 0));
-                break;
-        }
+        this.myCostLabel.addCostChange(this.costSign * this._selectedCards.reduce((sum, card) => sum + (card.cardInfo.addInfo?.cost ?? errorNum), 0));
     }
 
-    private get selectedCards(): HandCardComponent[] {
+    private get selectedCards(): CardComponent[] {
         return this._selectedCards;
     }
 
 
     constructor(phaseManager: PhaseManager) {
+        super()
         this.phaseManager = phaseManager;
         this.scene = phaseManager.scene;
-        this.gameClient = phaseManager.gameClient;
         const screenWidth = this.scene.scale.width;
         const screenHeight = this.scene.scale.height;
         const handTableWidth = 800;
         const handTableHeight = 300;
+        this.cardSize = { width: 100, height: 150 };
 
         // 中央下に配置
         const myX = (screenWidth - handTableWidth) / 2;
@@ -142,8 +145,8 @@ export class CSSPhaseManager {
         const opponentX = (screenWidth - handTableWidth) / 2;
         const opponentY = 50;
 
-        this.myHandTable = new HandCardTableComponent(this.scene, {x: myX, y: myY, size: {width: 800, height: 300}},false);
-        this.opponentHandTable = new HandCardTableComponent(this.scene, {x: opponentX, y: opponentY, size: {width: 800, height: 300}}, true);
+        this.myHand = new HandCardBoardComponent(this.scene, {x: myX, y: myY, size: {width: 800, height: 300}},false);
+        this.opponentHand = new HandCardBoardComponent(this.scene, {x: opponentX, y: opponentY, size: {width: 800, height: 300}}, true);
 
         // コスト表示のラベルを追加
         this.myCostLabel = new CostLabelComponent(this.scene, myX - 50, myY + handTableHeight/2, '自分のコスト\n');
@@ -160,7 +163,6 @@ export class CSSPhaseManager {
         .setInteractive()
         .on('pointerdown', this.handleNextClickAsync, this);
 
-        this.setupCardInteractions();
         this.setHandTable();
 
         this._phase = eCSSPhase.END;
@@ -168,29 +170,36 @@ export class CSSPhaseManager {
         this.updateNextButtonVisibility();
     }
 
-    async startPhase(){
-        this.myHandTable.setInteractive(true);
-        this.opponentHandTable.setInteractive(true);
+    async startPhaseAsync(){
+        this.myHand.setInteractive(true);
+        this.opponentHand.setInteractive(false);
         this.setHandTable();
         await this.setPhase(eCSSPhase.COST);
         this.updateNextButtonVisibility();
     }
 
-    async endPhase(){
-        this.myHandTable.setInteractive(false);
-        this.opponentHandTable.setInteractive(false);
+    async endPhaseAsync(){
+        this.myHand.setInteractive(false);
+        this.opponentHand.setInteractive(false);
         this.nextButton.setVisible(false);
         this.clearSelection();
     }
 
-    private isSelectOk(card: HandCardComponent): boolean {
+    private isSelectOk(card: CardComponent): boolean {
+        if(this.phase === eCSSPhase.SUMMON && !card.cardInfo.addInfo?.isSummonable){
+            return false;
+        }
+        if(this.phase === eCSSPhase.SPELL && !card.cardInfo.addInfo?.isSpellable){
+            return false;
+        }
         switch(this.phase){
             case eCSSPhase.COST:
-                return (this.selectedCards.length === 0 && !card.cardInfo.isSpellDeck)
+                return (this.selectedCards.length === 0)
             case eCSSPhase.SUMMON:
-                return (this.selectedCards.length === 1)
             case eCSSPhase.SPELL:
-                return (this.selectedCards.length === 1)
+                const totalCost = this.selectedCards.reduce((sum, selectedCard) => sum + (selectedCard.cardInfo.addInfo?.cost ?? errorNum), 0);
+                const newTotalCost = totalCost + (card.cardInfo.addInfo?.cost ?? errorNum);
+                return (0<= this.myCostLabel.cost + this.costSign*newTotalCost);
             case eCSSPhase.END:
                 debugger;
                 unexpectError("END-Phase is not selectable");
@@ -199,19 +208,10 @@ export class CSSPhaseManager {
     }
 
     private isSubmitOk(): boolean {
-        switch(this.phase){
-            case eCSSPhase.COST:
-                return true;
-            case eCSSPhase.SUMMON:
-                return true;
-            case eCSSPhase.SPELL:
-                return true;
-            case eCSSPhase.END:
-                return false;
-        }
+        return true;
     }
 
-    private handleCardClick(card: HandCardComponent): void {
+    private handleCardClick(card: CardComponent): void {
         const index = this.selectedCards.indexOf(card);
         
         if (index !== -1) {
@@ -227,17 +227,19 @@ export class CSSPhaseManager {
     }
 
 
-    private selectCard(card: HandCardComponent): void {
+    private selectCard(card: CardComponent): void {
         this.selectedCards.push(card);
         // カードを少し上に移動
         card.setY(card.y - 20);
         // 選択状態の視覚的フィードバック
+
+        console.log(card.cardInfo.addInfo?.cost);
         card.setTint(0xffff00);
         // コストの変化を追加
-        this.myCostLabel.addCostChange(card.fullInfo.cost);
+        this.myCostLabel.addCostChange(card.cardInfo.addInfo?.cost ?? errorNum);
     }
 
-    private deselectCard(card: HandCardComponent): void {
+    private deselectCard(card: CardComponent): void {
         const index = this.selectedCards.indexOf(card);
         if (index !== -1) {
             this.selectedCards.splice(index, 1);
@@ -246,7 +248,7 @@ export class CSSPhaseManager {
             // 選択状態の解除
             card.clearTint();
             // コストの変化を元に戻す
-            this.myCostLabel.addCostChange(-card.fullInfo.cost);
+            this.myCostLabel.addCostChange(-(card.cardInfo.addInfo?.cost ?? errorNum));
         }
     }
 
@@ -265,50 +267,39 @@ export class CSSPhaseManager {
     }
 
 
-    public getSelectedCards(): HandCardComponent[] {
+    public getSelectedCards(): CardComponent[] {
         return this.selectedCards;
     }
 
     public setHandTable(): void {
-        const cssPhaseCards = [...this.phaseManager.cardPhases, ...this.phaseManager.spellCardPhases]
-            .filter(cardPhase => 
-                (cardPhase.status === eGamePhase.COST_SUMMON_SPELL) &&
-                cardPhase.info.cardFullInfo !== undefined
+        const cssPhaseCards = this.phaseManager.cardInfos
+            .filter(cardInfo => 
+                (cardInfo.place.area === eCardArea.HAND)
             )
-            .map(cardPhase => ({
-                known: cardPhase.info.cardKnownInfo,
-                full: cardPhase.info.cardFullInfo!,
-                who: cardPhase.who
-            }));
         
-        this.myHandTable.setCards(cssPhaseCards
-            .filter(card => card.who === eWho.MY)
+        const myCards = cssPhaseCards
+            .filter(cardInfo => cardInfo.place.who === eWho.MY)
             .map((cardInfo) => {
-                const card = new HandCardComponent(this.scene, cardInfo.known, cardInfo.full);
+                const card = new CardComponent(this.scene, cardInfo, this.cardSize);
+                card.status = CardStatus.FRONT;
+                card.setInteractive(true);
                 card.on('cardClicked', this.handleCardClick, this);
                 return card;
-            })
-        );
-        this.opponentHandTable.setCards(cssPhaseCards
-            .filter(card => card.who === eWho.OPPONENT)
+            });
+
+        const opponentCards = cssPhaseCards
+            .filter(cardInfo => cardInfo.place.who === eWho.OPPONENT)
             .map((cardInfo) => {
-                const card = new HandCardComponent(this.scene, cardInfo.known, cardInfo.full);
-                // card.on('cardClicked', this.handleCardClick, this);
+                const card = new CardComponent(this.scene, cardInfo, this.cardSize);
+                card.status = CardStatus.BACK;
                 card.setInteractive(false);
                 return card;
-            })
-        );
+            });
+
+        this.myHand.updateVisualizer(myCards);
+        this.opponentHand.updateVisualizer(opponentCards);
     }
 
-    private setupCardInteractions(): void {
-        // カードのクリックイベントを設定
-        this.myHandTable.on('cardClicked', (card: HandCardComponent) => {
-            this.handleCardClick(card);
-        });
-        // this.opponentHandTable.on('cardClicked', (card: HandCardComponent) => {
-        //     this.handleCardClick(card);
-        // });
-    }
 
     create() {
     }

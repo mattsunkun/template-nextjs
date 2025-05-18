@@ -1,16 +1,12 @@
 import { LocalServer } from "../servers/LocalServer";
+import { AbstractSubClient } from "./AbstractSubClient";
 import { tCardAddInfo, tGameClient } from "./GameClient";
 
-export class MemoryGameClient {
-  private idGameClient: tGameClient;
-  private localServer: LocalServer;
+export class MemoryGameClient extends AbstractSubClient {
 
   constructor(idGameClient: tGameClient, localServer: LocalServer) {
-    this.idGameClient = idGameClient;
-    this.localServer = localServer;
+    super(idGameClient, localServer);
   }
-
-
 
   
   async receiveOpponentCardFullInfoAsync(): Promise<tCardAddInfo|undefined> {

@@ -1,7 +1,7 @@
 import { eAssetFolderType } from "@/game/servers/LocalServer";
 import { getLoadKey } from "@/utils/functions";
 import { tSize } from "@/utils/types";
-import { eCardArea, tCardAddInfo, tCardInfo } from "../clients/GameClient";
+import { tCardAddInfo, tCardInfo } from "../clients/GameClient";
 export enum CardStatus {
   FRONT = "front",
   BACK = "back",
@@ -57,16 +57,17 @@ export class CardComponent extends Phaser.GameObjects.Container {
 
         
         // ラベルの初期化
-        let label = "";
-        switch(cardInfo.place.area) {
-            case eCardArea.TABLE:
-                label = `debug\n${cardInfo.debug?.pair_id}`;
-                break;
-            case eCardArea.DISCARD:
-                label = `debug\n${cardInfo.debug?.spell_id}`;
-                break;
-        }
-        this.label = scene.add.text(0, 0, `debug\n${label}`, {
+        const label = `<debug>\n${cardInfo.debug?.spell_id}\n${cardInfo.debug?.pair_id}\n</debug>`
+        // let label = "";
+        // switch(cardInfo.place.area) {
+        //     case eCardArea.TABLE:
+        //         label = `debug\n${cardInfo.debug?.pair_id}`;
+        //         break;
+        //     case eCardArea.DISCARD:
+        //         label = `debug\n${cardInfo.debug?.spell_id}`;
+        //         break;
+        // }
+        this.label = scene.add.text(0, 0, label, {
             fontSize: '32px',
             color: '#fff',
             backgroundColor: '#000', 
@@ -92,18 +93,13 @@ export class CardComponent extends Phaser.GameObjects.Container {
 
     private setupInteractions(): void {
         this.on("pointerdown", () => {
-            if (this.status === CardStatus.BACK) {
-                this.emit("cardClicked", this);
-            }
+            this.emit("cardClicked", this);
         });
 
         this.on("pointerover", () => {
-            if (this.status === CardStatus.BACK) {
-
-                this.diImages[eAssetFolderType.BACK].alpha = 0.8;
-                this.scene.input.setDefaultCursor("pointer");
-                this.label.setVisible(true);
-            }
+            this.diImages[eAssetFolderType.BACK].alpha = 0.8;
+            this.scene.input.setDefaultCursor("pointer");
+            this.label.setVisible(true);
         });
 
         this.on("pointerout", () => {
@@ -159,6 +155,21 @@ export class CardComponent extends Phaser.GameObjects.Container {
                 break;
         }
         this._status = state;
+    }
+
+
+
+
+    public setTint(color: number): void {
+        this.diImages[eAssetFolderType.FRONT].setTint(color);
+        this.diImages[eAssetFolderType.BACK].setTint(color);
+        this.diImages[eAssetFolderType.REAL].setTint(color);
+    }
+
+    public clearTint(): void {
+        this.diImages[eAssetFolderType.FRONT].clearTint();
+        this.diImages[eAssetFolderType.BACK].clearTint();
+        this.diImages[eAssetFolderType.REAL].clearTint();
     }
 }
   

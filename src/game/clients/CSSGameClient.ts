@@ -1,32 +1,35 @@
 import { LocalServer } from "../servers/LocalServer";
-import { tGameClient } from "./GameClient";
+import { AbstractSubClient } from "./AbstractSubClient";
+import { tCardAddInfo, tGameClient } from "./GameClient";
 
-export class CSSGameClient  {
-    private gameClient: tGameClient;
-    private localServer: LocalServer|undefined;
+export class CSSGameClient extends AbstractSubClient {
 
     constructor(gameClient: tGameClient, localServer?: LocalServer) {
-        this.gameClient = gameClient;
-        this.localServer = localServer;
+        super(gameClient, localServer);
     }
 
-    // public async fetchOpponentCostCardAsync(): Promise<tCardAddInfo|undefined> {
-    //     if(this.localServer) {
-    //         return await this.localServer.fetchOpponentCostCardAsync();
-    //     } else {
-    //         throw new Error("LocalServer is undefined");
-    //         return undefined;
-    //     }
-    // }
+    public async fetchOpponentCostCardsAsync(): Promise<tCardAddInfo[]> {
+        if(this.localServer) {
+            return await this.localServer.fetchOpponentCostCardsAsync();
+        } else {
+            return [];
+        }
+    }
 
-    // public async postMyCostUsedAsync(cardIdFrontBacks: string[]): Promise<void> {
-    //     if(this.localServer) {
-    //         await this.localServer.postMyCostCardAsync(cardIdFrontBacks);
-    //     } else {
-    //         throw new Error("LocalServer is undefined");
-    //     }
-    // }
-
+    public async fetchOpponentSummonCardsAsync(): Promise<tCardAddInfo[]> {
+        if(this.localServer) {
+            return await this.localServer.fetchOpponentSummonCardsAsync();
+        } else {
+            return [];
+        }
+    }
+    public async fetchOpponentSpellCardsAsync(): Promise<tCardAddInfo[]> {
+        if(this.localServer) {
+            return await this.localServer.fetchOpponentSpellCardsAsync();
+        } else {
+            return [];
+        }
+    }
     
     
 }

@@ -364,7 +364,9 @@ export class LocalServer {
             },
             cost: 0,
             attack: 0,
-            spell_id: spellCardInfo.real
+            spell_id: spellCardInfo.real,
+            isSpellable: true,
+            isSummonable: false
           }
 
         };
@@ -407,6 +409,8 @@ export class LocalServer {
             cost: i,
             attack: this.rule.allPairCount - i,
             spell_id: (i===0) ? `shuffle.0` : undefined,
+            isSpellable: false,
+            isSummonable: true
           }
         };
         tmpTableCardInfos.push(cardInfo);
@@ -432,6 +436,7 @@ export class LocalServer {
   }
 
   private shuffledCardKnownInfos():tCardInfo[]{
+    // shuffle
     this.cardInfos = Phaser.Utils.Array.Shuffle([...this.cardInfos]);
     const cardInfosWithoutAddInfo = this.cardInfos.map(card => ({
       ...card,
@@ -562,12 +567,60 @@ export class LocalServer {
 }
 
 
-  // public async fetchOpponentCostCardAsync(): Promise<tCardFullInfo|undefined> {
-  //   if(this.selectedCheatingPairCard) {
-  //     return this.selectedCheatingPairCard;
-  //   }
-  //   return undefined;
-  // }
+  public async fetchOpponentCostCardsAsync(): Promise<tCardAddInfo[]> {
+    const handCards = this.cardInfos.filter(card => 
+        card.place.area === eCardArea.HAND && 
+        card.place.who === eWho.OPPONENT
+    );
+
+    if(handCards.length > 0) {
+        const selectedCard = Phaser.Math.RND.pick(handCards);
+        if(selectedCard.addInfo){
+          return [selectedCard.addInfo];
+        }else{
+          return [];
+        }
+    }
+    return [];
+  }
+
+
+  public async fetchOpponentSummonCardsAsync(): Promise<tCardAddInfo[]> {
+    const handCards = this.cardInfos.filter(card => 
+        card.place.area === eCardArea.HAND && 
+        card.place.who === eWho.OPPONENT &&
+        card.addInfo?.isSummonable === true
+    );
+
+    if(handCards.length > 0) {
+        const selectedCard = Phaser.Math.RND.pick(handCards);
+        if(selectedCard.addInfo){
+          return [selectedCard.addInfo];
+        }else{
+          return [];
+        }
+    }
+    return [];
+  }
+
+
+  public async fetchOpponentSpellCardsAsync(): Promise<tCardAddInfo[]> {
+    const handCards = this.cardInfos.filter(card => 
+        card.place.area === eCardArea.HAND && 
+        card.place.who === eWho.OPPONENT &&
+        card.addInfo?.isSpellable === true
+    );
+
+    if(handCards.length > 0) {
+        const selectedCard = Phaser.Math.RND.pick(handCards);
+        if(selectedCard.addInfo){
+          return [selectedCard.addInfo];
+        }else{
+          return [];
+        }
+    }
+    return [];
+  }
 
   // public async postMyCostCardAsync(cardIdFrontBacks: string[]): Promise<void> {
   //   const cardMyCostCards = this.cardFullInfos.filter(card => !cardIdFrontBacks.includes(card.idFrontBack));

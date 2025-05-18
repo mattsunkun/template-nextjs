@@ -1,5 +1,5 @@
 import { tSize } from "@/utils/types";
-import { CardComponent } from "../CardComponent";
+import { CardComponent, CardStatus } from "../CardComponent";
 
 export type tHandTablePosition = {
     x: number;
@@ -7,7 +7,7 @@ export type tHandTablePosition = {
     size: tSize;
 }
 
-export class HandCardTableComponent extends Phaser.GameObjects.Container {
+export class HandCardBoardComponent extends Phaser.GameObjects.Container {
     private cardComponent: CardComponent[] = [];
     private _size: tSize;
     private maxRotation: number = 60;
@@ -34,7 +34,7 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
 
     public setCards(cardComponents: CardComponent[]): void {
         // 既存のカードをクリア
-        // this.cards.forEach(card => card.destroy());
+        this.cardComponent.forEach(card => card.destroy());
         this.cardComponent = [];
         this.removeAll();
 
@@ -62,6 +62,10 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
             this.cardComponent.push(card);
             this.add(card);
         });
+    }
+
+    public updateVisualizer(cardComponents: CardComponent[]): void {
+        this.setCards(cardComponents);
     }
 
     private getCardRotation(index: number, totalCards: number): number {
@@ -110,6 +114,13 @@ export class HandCardTableComponent extends Phaser.GameObjects.Container {
                 idFrontBack === card.cardInfo.idFrontBack
             )
         );
+        const removedCards = this.cardComponent.filter(card => 
+            idFrontBacks.some(idFrontBack => 
+                idFrontBack === card.cardInfo.idFrontBack
+            )
+        )
+        removedCards.forEach(card => card.status = CardStatus.VANISHED);
+        
         this.setCards(remainingCards);
     }
 } 

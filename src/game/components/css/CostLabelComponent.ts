@@ -2,9 +2,17 @@ import Phaser from 'phaser';
 
 export class CostLabelComponent extends Phaser.GameObjects.Container {
     private costText: Phaser.GameObjects.Text;
-    private cost: number = 0;
+    private _cost: number = 0;
     private costChange: number = 0;
     private label: string;
+
+    public get cost(): number {
+        return this._cost;
+    }
+    private set cost(newCost: number) {
+        this._cost = newCost;
+        this.updateText();
+    }
 
     constructor(scene: Phaser.Scene, x: number, y: number, label: string = 'コスト') {
         super(scene, x, y);

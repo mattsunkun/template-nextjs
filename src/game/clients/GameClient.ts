@@ -53,6 +53,8 @@ export type tCardAddInfo = {
   readonly cost: number;
   readonly attack: number;
   readonly spell_id?: string;
+  readonly isSpellable: boolean;
+  readonly isSummonable: boolean;
 }
 
 // export type tCardFullInfo = {

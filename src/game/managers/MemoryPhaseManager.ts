@@ -4,10 +4,11 @@ import { eCardArea, eWho, tCardInfo } from "../clients/GameClient";
 import { DeckCardBoardComponent } from "../components/boards/DeckCardBoardComponent";
 import { TableCardBoardComponent } from "../components/boards/TableCardBoardComponent";
 import { CardComponent, CardStatus } from "../components/CardComponent";
+import { AbstractSubManager } from "./AbstractSubManager";
 import { PhaseManager } from "./PhaseManager";
 
 
-export class MemoryPhaseManager {
+export class MemoryPhaseManager extends AbstractSubManager {
     private scene: Phaser.Scene;
     private phaseManager: PhaseManager;
     
@@ -20,6 +21,7 @@ export class MemoryPhaseManager {
     private cardSize: tSize;
 
     constructor(data: {phaseManager: PhaseManager}){
+        super();
         this.scene = data.phaseManager.scene;
         this.phaseManager = data.phaseManager;
 
@@ -220,7 +222,7 @@ export class MemoryPhaseManager {
         }
     }
 
-    public endPhase(){
+    public async endPhaseAsync(){
         this.table.setInteractive(false);
     }
 
