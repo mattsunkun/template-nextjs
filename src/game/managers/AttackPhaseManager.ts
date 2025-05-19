@@ -21,6 +21,6 @@ export class AttackPhaseManager extends AbstractSubManager {
     }
 
     public updateVisualizer(): void {
-        
+        return;
     }
 }
