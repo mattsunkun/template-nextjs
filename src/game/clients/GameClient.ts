@@ -38,8 +38,9 @@ export type tCardInfo = {
 }
 
 export type tPlace = {
-  who?: eWho;
+  who: eWho;
   area: eCardArea;
+  position: number;
 }
 
 export type tCardAddInfo = {
@@ -154,11 +155,11 @@ export class GameClient {
     }
   }
 
-  async fetchSpecificCardFullInfoAsync(idFrontBack: string): Promise<tCardAddInfo|undefined> {
+  async fetchSpecificCardFullInfoAsync(idFrontBack: string): Promise<tCardAddInfo> {
     if(this.localServer) {
       return await this.localServer.fetchSpecificCardFullInfo(idFrontBack);
     } else{
-      return await undefined;
+      throw new Error("localServer is undefined");
     }
   }
 

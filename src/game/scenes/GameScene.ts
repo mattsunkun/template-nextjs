@@ -2,7 +2,8 @@ import { loadCardAssetsByType } from '@/utils/functions';
 import { Scene } from 'phaser';
 import { GameClient, tRule } from '../clients/GameClient';
 import { PhaseManager } from '../managers/PhaseManager';
-import { eAssetFolderType, myMemoryCardInfos, mySpellCardInfos, opponentMemoryCardInfos, opponentSpellCardInfos } from '../servers/LocalServer';
+import { myMemoryCardInfos, mySpellCardInfos, opponentMemoryCardInfos, opponentSpellCardInfos } from '../servers/CardData';
+import { eAssetFolderType } from '../servers/LocalServer';
 
 export class GameScene extends Scene
 {

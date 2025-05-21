@@ -1,5 +1,6 @@
 import { generateStringUuid, sleep, unexpectError } from '@/utils/functions';
 import { eCardArea, eWho, tCardAddInfo, tCardInfo, tGameClient, tPlace, tRule } from '../clients/GameClient';
+import { myMemoryCardInfos, mySpellCardInfos, opponentMemoryCardInfos, opponentSpellCardInfos } from './CardData';
 
 
 export enum eAssetFolderType {
@@ -8,316 +9,19 @@ export enum eAssetFolderType {
   REAL = 'real'
 }
 
+export const __FULL_DEBUG = false;
 export const _allPairCount = 13;
 export const _disCardPairCount = 1;
 export const _usePairCount = _allPairCount - _disCardPairCount;
 export const _spellCount = 10;
 export const _isMyTurn = true;
-
+export const _shuffle = false;
 export type tCardRawInfo = {
   front: string;
   back: string;
   real: string;
 }
 
-export const myMemoryBack = "normal.1";
-export const opponentMemoryBack = "normal.1";
-export const mySpellBack = "normal.2";
-export const opponentSpellBack = "normal.2";
-
-export const myMemoryCardInfos: tCardRawInfo[] = [
-  {
-    front: "normal.heart.0",
-    back: myMemoryBack, 
-    real: "normal.heart.0"
-  },
-  {
-    front: "normal.heart.1",
-    back: myMemoryBack, 
-    real: "normal.heart.1"
-  },
-  {
-    front: "normal.heart.2",
-    back: myMemoryBack, 
-    real: "normal.heart.2"
-  },
-  {
-    front: "normal.heart.3",
-    back: myMemoryBack, 
-    real: "normal.heart.3"
-  },
-  {
-    front: "normal.heart.4",
-    back: myMemoryBack, 
-    real: "normal.heart.4"
-  },
-  {
-    front: "normal.heart.5",
-    back: myMemoryBack, 
-    real: "normal.heart.5"
-  },
-  {
-    front: "normal.heart.6",
-    back: myMemoryBack, 
-    real: "normal.heart.6"
-  },
-  {
-    front: "normal.heart.7",
-    back: myMemoryBack, 
-    real: "normal.heart.7"
-  },
-  {
-    front: "normal.heart.8",
-    back: myMemoryBack, 
-    real: "normal.heart.8"
-  },
-  {
-    front: "normal.heart.9",
-    back: myMemoryBack, 
-    real: "normal.heart.9"
-  },
-  {
-    front: "normal.heart.10",
-    back: myMemoryBack, 
-    real: "normal.heart.10"
-  },
-  {
-    front: "normal.heart.11",
-    back: myMemoryBack, 
-    real: "normal.heart.11"
-  },
-  {
-    front: "normal.heart.12",
-    back: myMemoryBack, 
-    real: "normal.heart.12"
-  },
-  {
-    front: "normal.heart.13",
-    back: myMemoryBack, 
-    real: "normal.heart.13"
-  }
-];
-
-export const opponentMemoryCardInfos: tCardRawInfo[] = [
-  {
-    front: "normal.spade.0",
-    back: opponentMemoryBack, 
-    real: "normal.spade.0"
-  },
-  {
-    front: "normal.spade.1",
-    back: opponentMemoryBack, 
-    real: "normal.spade.1"
-  },
-  {
-    front: "normal.spade.2",
-    back: opponentMemoryBack, 
-    real: "normal.spade.2"
-  },
-  {
-    front: "normal.spade.3",
-    back: opponentMemoryBack, 
-    real: "normal.spade.3"
-  },
-  {
-    front: "normal.spade.4",
-    back: opponentMemoryBack, 
-    real: "normal.spade.4"
-  },
-  {
-    front: "normal.spade.5",
-    back: opponentMemoryBack, 
-    real: "normal.spade.5"
-  },
-  {
-    front: "normal.spade.6",
-    back: opponentMemoryBack, 
-    real: "normal.spade.6"
-  },
-  {
-    front: "normal.spade.7",
-    back: opponentMemoryBack, 
-    real: "normal.spade.7"
-  },
-  {
-    front: "normal.spade.8",
-    back: opponentMemoryBack, 
-    real: "normal.spade.8"
-  },
-  {
-    front: "normal.spade.9",
-    back: opponentMemoryBack, 
-    real: "normal.spade.9"
-  },
-  {
-    front: "normal.spade.10",
-    back: opponentMemoryBack, 
-    real: "normal.spade.10"
-  },
-  {
-    front: "normal.spade.11",
-    back: opponentMemoryBack, 
-    real: "normal.spade.11"
-  },
-  {
-    front: "normal.spade.12",
-    back: opponentMemoryBack, 
-    real: "normal.spade.12"
-  },
-  {
-    front: "normal.spade.13",
-    back: opponentMemoryBack, 
-    real: "normal.spade.13"
-  }
-];
-
-export const mySpellCardInfos: tCardRawInfo[] = [
-  {
-    front: "shuffle.0",
-    back: mySpellBack,
-    real: "shuffle.0"
-  }, 
-  {
-    front: "defence.+.2",
-    back: mySpellBack,
-    real: "defence.+.2"
-  },
-  {
-    front: "defence.+.5",
-    back: mySpellBack,
-    real: "defence.+.5"
-  },
-  {
-    front: "cost.-.-1",
-    back: mySpellBack,
-    real: "cost.-.-1"
-  },
-  {
-    front: "cost.-.-1",
-    back: mySpellBack,
-    real: "cost.-.-1"
-  },
-  {
-    front: "cost.+.10",
-    back: mySpellBack,
-    real: "cost.+.10"
-  },
-  {
-    front: "attack.-.5",
-    back: mySpellBack,
-    real: "attack.-.5"
-  },
-  {
-    front: "attack.+.3",
-    back: mySpellBack,
-    real: "attack.+.3"
-  },
-  {
-    front: "attack.+.10",
-    back: mySpellBack,
-    real: "attack.+.10"
-  },
-  {
-    front: "scan.1.0",
-    back: mySpellBack,
-    real: "scan.1.0"
-  },
-  {
-    front: "scan.3.3",
-    back: mySpellBack,
-    real: "scan.3.3"
-  },
-  {
-    front: "scan.5.0",
-    back: mySpellBack,
-    real: "scan.5.0"
-  },
-  {
-    front: "scan.7.0",
-    back: mySpellBack,
-    real: "scan.7.0"
-  },
-  {
-    front: "scan.10.10",
-    back: mySpellBack,
-    real: "scan.10.10"
-  }
-  
-];
-
-export const opponentSpellCardInfos: tCardRawInfo[] = [
-  {
-    front: "shuffle.0",
-    back: opponentSpellBack,
-    real: "shuffle.0"
-  }, 
-  {
-    front: "defence.+.2",
-    back: opponentSpellBack,
-    real: "defence.+.2"
-  },
-  {
-    front: "defence.+.5",
-    back: opponentSpellBack,
-    real: "defence.+.5"
-  },
-  {
-    front: "cost.-.-1",
-    back: opponentSpellBack,
-    real: "cost.-.-1"
-  },
-  {
-    front: "cost.-.-1",
-    back: opponentSpellBack,
-    real: "cost.-.-1"
-  },
-  {
-    front: "cost.+.10",
-    back: opponentSpellBack,
-    real: "cost.+.10"
-  },
-  {
-    front: "attack.-.5",
-    back: opponentSpellBack,
-    real: "attack.-.5"
-  },
-  {
-    front: "attack.+.3",
-    back: opponentSpellBack,
-    real: "attack.+.3"
-  },
-  {
-    front: "attack.+.10",
-    back: opponentSpellBack,
-    real: "attack.+.10"
-  },
-  {
-    front: "scan.1.0",
-    back: opponentSpellBack,
-    real: "scan.1.0"
-  },
-  {
-    front: "scan.3.3",
-    back: opponentSpellBack,
-    real: "scan.3.3"
-  },
-  {
-    front: "scan.5.0",
-    back: opponentSpellBack,
-    real: "scan.5.0"
-  },
-  {
-    front: "scan.7.0",
-    back: opponentSpellBack,
-    real: "scan.7.0"
-  },
-  {
-    front: "scan.10.10",
-    back: opponentSpellBack,
-    real: "scan.10.10"
-  }
-  
-];
 
 export class LocalServer {
   private gameClient: tGameClient;
@@ -351,7 +55,8 @@ export class LocalServer {
 
           place: {
             who: isMyCard ? eWho.MY : eWho.OPPONENT,
-            area: eCardArea.DECK
+            area: eCardArea.DECK, 
+            position: -1
           },
 
           debug: {
@@ -396,7 +101,8 @@ export class LocalServer {
 
           place: {
             who: isMyCard ? eWho.MY : eWho.OPPONENT,
-            area: eCardArea.TABLE
+            area: eCardArea.TABLE,
+            position: -1
           },
           debug: {
             pair_id: i, 
@@ -441,13 +147,59 @@ export class LocalServer {
   }
 
   private shuffledCardKnownInfos():tCardInfo[]{
-    // shuffle
-    this.cardInfos = Phaser.Utils.Array.Shuffle([...this.cardInfos]);
-    const cardInfosWithoutAddInfo = this.cardInfos.map(card => ({
-      ...card,
-      addInfo: undefined
-    }));
+    // 各エリアとwhoごとに位置をランダムに割り当て
+    const areaWhoGroups = new Map<string, tCardInfo[]>();
     
+    // カードをエリアとwhoでグループ化
+    this.cardInfos.forEach(card => {
+      let key: string;
+      if(card.place.area === eCardArea.TABLE){
+        key = `${card.place.area}`;
+      }else{
+        key = `${card.place.area}-${card.place.who}`;
+      }
+      if (!areaWhoGroups.has(key)) {
+        areaWhoGroups.set(key, []);
+      }
+      areaWhoGroups.get(key)!.push(card);
+    });
+    
+    // 各グループ内で位置を割り当て
+    areaWhoGroups.forEach((cards, key) => {
+      cards.sort((a, b) => (a.addInfo?.pair_id ?? 0) - (b.addInfo?.pair_id ?? 0));
+      let positions: number[];
+      if (_shuffle) {
+        // ランダムな順番で位置を割り当て
+        positions = Array.from({length: cards.length}, (_, i) => i);
+        Phaser.Utils.Array.Shuffle(positions);
+      } else {
+        // 前から順番に位置を割り当て
+        positions = Array.from({length: cards.length}, (_, i) => i);
+      }
+      
+      cards.forEach((card, index) => {
+        card.place.position = positions[index];
+      });
+    });
+
+    // カード全体をシャッフル
+    if(_shuffle){
+      this.cardInfos = Phaser.Utils.Array.Shuffle([...this.cardInfos]);
+    }else{
+      this.cardInfos = this.cardInfos.sort((a, b) => a.place.position - b.place.position);
+    }
+    
+    console.log(this.cardInfos.map(card => card.place.position));
+
+    let cardInfosWithoutAddInfo: tCardInfo[];
+    if(__FULL_DEBUG){
+      cardInfosWithoutAddInfo = this.cardInfos.map(card => ({
+        ...card,
+        addInfo: undefined
+      }));
+    }else{
+      cardInfosWithoutAddInfo = this.cardInfos;
+    }
     return cardInfosWithoutAddInfo;
   }
 
@@ -470,15 +222,19 @@ export class LocalServer {
     return this.shuffledCardKnownInfos();
   }
 
-  async fetchSpecificCardFullInfo(idFrontBack: string): Promise<tCardAddInfo|undefined> {
+  async fetchSpecificCardFullInfo(idFrontBack: string): Promise<tCardAddInfo> {
     await sleep(100);
     const card = this.cardInfos.find(card => card.idFrontBack === idFrontBack);
     if(card){
-      return card.addInfo;
+      if(card.addInfo){
+        return card.addInfo;
+      }else{
+        unexpectError("card.addInfo is undefined");
+      }
     }else{
       unexpectError("card is undefined");
-      return undefined;
     }
+    throw new Error("card is undefined");
   }
 
 
@@ -491,29 +247,29 @@ export class LocalServer {
 
   private firstFlag = true;
   private secondFlag = true;
-  async fetchOpponentTableCardChoiceAsync(): Promise<tCardAddInfo|undefined> {
+  async fetchOpponentTableCardChoiceAsync(): Promise<string> {
 
     await sleep(100);
 
     if(this.firstFlag){
       this.firstFlag = false;
-      return this.getCheatingPairCard();
+      return this.getCheatingPairCard().idFrontBack;
     }
     if(this.secondFlag){
       this.secondFlag = false;
-      return this.getCheatingPairCard();
+      return this.getCheatingPairCard().idFrontBack;
     }
   
 // return await this.getCheatingPairCard(cardPhases);
 
     if(Math.random() < 0.8){
-      return this.getRandomPairCard();
+      return this.getRandomPairCard().idFrontBack;
     }else{
-      return this.getCheatingPairCard();
+      return this.getCheatingPairCard().idFrontBack;
     }
   }
 
-  getRandomPairCard(): tCardAddInfo|undefined {
+  getRandomPairCard(): tCardAddInfo {
     // テーブル上のカードをフィルタリング
     const tableCards = this.cardInfos.filter(card => 
       card.place.area === eCardArea.TABLE &&
@@ -521,8 +277,7 @@ export class LocalServer {
     );
 
     if(tableCards.length === 0) {
-      unexpectError("テーブル上に選択可能なカードがありません");
-      return undefined;
+      throw new Error("テーブル上に選択可能なカードがありません");
     }
 
     // ランダムに1枚選択
@@ -534,42 +289,55 @@ export class LocalServer {
       this.selectedCardInfos = [];
     }
 
-    return selectedCard.addInfo;
+    if(selectedCard.addInfo){
+      return selectedCard.addInfo;
+    }else{
+      throw new Error("selectedCard.addInfo is undefined");
+    }
   }
 
 
-  getCheatingPairCard(): tCardAddInfo | undefined {
+  getCheatingPairCard(): tCardAddInfo {
     // テーブル上のカードのみをフィルタリング
     const tableCards = this.cardInfos.filter(card => card.place.area === eCardArea.TABLE);
 
     // 選択済みカードが0または1枚の場合
-    if (this.selectedCardInfos.length <= 1) {
+    if (this.selectedCardInfos.length == 0) {
 
       // 選択済みが0枚の場合は、新しいペアを探す
       for (const card of tableCards) {
         const pairCard = tableCards.find(c => 
-          c.addInfo?.pair_id === card.addInfo?.pair_id && 
-          c.idFrontBack !== card.idFrontBack
+          c.addInfo?.pair_id === card.addInfo?.pair_id && //ペアを見つける
+          c.idFrontBack !== card.idFrontBack // 自分自身はペアにできない
         );
 
         if (pairCard) {
           this.selectedCardInfos.push(card);
           this.selectedCardInfos.push(pairCard);
-          return card.addInfo;
+          if(card.addInfo){
+            return card.addInfo;
+          }else{
+            unexpectError("card.addInfo is undefined");
+          }
         }
       }
     }
 
     // 2枚選択済みの場合は2枚目を返して配列をクリア
-    if (this.selectedCardInfos.length === 2) {
+    else if (this.selectedCardInfos.length === 2) {
       const secondCard = this.selectedCardInfos[1];
       this.selectedCardInfos = [];
-      return secondCard.addInfo;
+      if(secondCard.addInfo){
+        return secondCard.addInfo;
+      }else{
+        unexpectError("secondCard.addInfo is undefined");
+      }
     }
+debugger;
 
     unexpectError("getCheatingPairCard is undefined");
-    return undefined;
-}
+    throw new Error("getCheatingPairCard is undefined");
+  }
 
 
   public async fetchOpponentCostCardsAsync(): Promise<tCardAddInfo[]> {

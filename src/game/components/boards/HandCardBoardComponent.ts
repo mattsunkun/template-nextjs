@@ -1,5 +1,8 @@
+import { PhaseManager } from "@/game/managers/PhaseManager";
 import { tSize } from "@/utils/types";
+import Phaser from "phaser";
 import { CardComponent, CardStatus } from "../CardComponent";
+import { AbstractCardBoardComponent } from "./AbstractCardBoardComponent";
 
 export type tHandTablePosition = {
     x: number;
@@ -7,8 +10,7 @@ export type tHandTablePosition = {
     size: tSize;
 }
 
-export class HandCardBoardComponent extends Phaser.GameObjects.Container {
-    private cardComponent: CardComponent[] = [];
+export class HandCardBoardComponent extends AbstractCardBoardComponent {
     private _size: tSize;
     private maxRotation: number = 60;
     private maxOffset: number = 100;
@@ -16,11 +18,12 @@ export class HandCardBoardComponent extends Phaser.GameObjects.Container {
     private isOpponent: boolean;
 
     constructor(
-        scene: Phaser.Scene, 
+        phaseManager: PhaseManager,
+        cardComponents: CardComponent[],
         position: tHandTablePosition,
         isOpponent: boolean
     ) {
-        super(scene);
+        super(phaseManager, cardComponents);
         this._size = position.size;
         this.tablePosition = position;
         this.isOpponent = isOpponent;
@@ -29,19 +32,27 @@ export class HandCardBoardComponent extends Phaser.GameObjects.Container {
         this.setPosition(position.x, position.y);
         // コンテナのサイズを設定
         this.setSize(position.size.width, position.size.height);
-        scene.add.existing(this);
+        this.scene.add.existing(this);
+        
+        this.layoutCards();
+        this.drawBorder();
     }
 
-    public setCards(cardComponents: CardComponent[]): void {
-        // 既存のカードをクリア
-        this.cardComponent.forEach(card => card.destroy());
-        this.cardComponent = [];
-        this.removeAll();
+    protected drawBorder(): void {
+        this.borderGraphics.clear();
+        this.borderGraphics.lineStyle(4, 0x00ff00, 1);
+        this.borderGraphics.strokeRect(
+            this.tablePosition.x, 
+            this.tablePosition.y,
+            this.tablePosition.size.width,
+            this.tablePosition.size.height
+        );
+    }
+
+    public layoutCards(): void {
 
         // 新しいカードを追加
-        cardComponents.forEach((cardComponent, index, array) => {
-            const card = cardComponent;
-
+        this.cardComponents.forEach((card, index, array) => {
             // カードの位置を計算
             const rotation = this.getCardRotation(index, array.length);
             const offset = this.getCardPosition(index, array.length);
@@ -59,13 +70,13 @@ export class HandCardBoardComponent extends Phaser.GameObjects.Container {
                 card.setRotation(card.rotation + Math.PI);
             }
 
-            this.cardComponent.push(card);
             this.add(card);
         });
     }
 
     public updateVisualizer(cardComponents: CardComponent[]): void {
-        this.setCards(cardComponents);
+        this._cardComponents = cardComponents;
+        this.layoutCards();
     }
 
     private getCardRotation(index: number, totalCards: number): number {
@@ -83,44 +94,20 @@ export class HandCardBoardComponent extends Phaser.GameObjects.Container {
         return this._size;
     }
 
-    // public destroy(): void {
-    //     this.cards.forEach(card => card.destroy());
-    //     this.cards = [];
-    //     super.destroy();
-    // }
-
-    public setInteractive(interactive: boolean = true): this {
-        if (interactive) {
-            super.setInteractive();
-        } else {
-            this.disableInteractive();
-        }
-        return this;
-    }
-
-    // public removeCardByIdFrontBack(idFrontBack: string): void {
-    //     const cardIndex = this.cards.findIndex(card => card.cardInfo.idFrontBack === idFrontBack);
-    //     if (cardIndex !== -1) {
-    //         const card = this.cards[cardIndex];
-    //         card.destroy();
-    //         this.cards.splice(cardIndex, 1);
-    //         this.remove(card);
-    //     }
-    // }
-
     public removeCards(idFrontBacks: string[]): void {
-        const remainingCards = this.cardComponent.filter(card => 
+        const remainingCards = this._cardComponents.filter(card => 
             !idFrontBacks.some(idFrontBack => 
                 idFrontBack === card.cardInfo.idFrontBack
             )
         );
-        const removedCards = this.cardComponent.filter(card => 
+        const removedCards = this._cardComponents.filter(card => 
             idFrontBacks.some(idFrontBack => 
                 idFrontBack === card.cardInfo.idFrontBack
             )
-        )
+        );
         removedCards.forEach(card => card.status = CardStatus.VANISHED);
         
-        this.setCards(remainingCards);
+        this._cardComponents = remainingCards;
+        this.layoutCards();
     }
 } 

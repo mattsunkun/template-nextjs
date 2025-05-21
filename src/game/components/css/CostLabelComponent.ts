@@ -52,6 +52,12 @@ export class CostLabelComponent extends Phaser.GameObjects.Container {
         this.updateText();
     }
 
+    public applyPartialCostChange(add2realCost: number): void {
+        this.costChange -= add2realCost;
+        this.cost += add2realCost;
+        this.updateText();
+    }
+
     private getDisplayText(): string {
         let text = `${this.label}${this.cost}`;
         if (this.costChange !== 0) {

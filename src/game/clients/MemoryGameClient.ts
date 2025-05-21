@@ -1,6 +1,6 @@
 import { LocalServer } from "../servers/LocalServer";
 import { AbstractSubClient } from "./AbstractSubClient";
-import { tCardAddInfo, tGameClient } from "./GameClient";
+import { tGameClient } from "./GameClient";
 
 export class MemoryGameClient extends AbstractSubClient {
 
@@ -9,12 +9,11 @@ export class MemoryGameClient extends AbstractSubClient {
   }
 
   
-  async receiveOpponentCardFullInfoAsync(): Promise<tCardAddInfo|undefined> {
+  async receiveOpponentCardFullInfoAsync(): Promise<string> {
     if(this.localServer) {
-        // debugger;
-      return await this.localServer.fetchOpponentTableCardChoiceAsync();
+        return await this.localServer.fetchOpponentTableCardChoiceAsync();
     } else {
-      return undefined;
+      throw new Error("localServer is undefined");
     }
   }
 }

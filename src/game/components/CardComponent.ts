@@ -1,13 +1,12 @@
 import { eAssetFolderType } from "@/game/servers/LocalServer";
 import { getLoadKey } from "@/utils/functions";
 import { tSize } from "@/utils/types";
-import { tCardAddInfo, tCardInfo } from "../clients/GameClient";
+import { eCardArea, tCardAddInfo, tCardInfo } from "../clients/GameClient";
 export enum CardStatus {
   FRONT = "front",
   BACK = "back",
   REAL = "real",
   VANISHED = "vanished"
-
 }
 
 export class CardComponent extends Phaser.GameObjects.Container {
@@ -22,11 +21,15 @@ export class CardComponent extends Phaser.GameObjects.Container {
         return this._cardInfo;
     }
 
-    public get cardAddInfo(): tCardAddInfo|undefined {
-        return this._cardInfo.addInfo;
+    public get cardAddInfo(): tCardAddInfo {
+        if(this._cardInfo.addInfo){
+            return this._cardInfo.addInfo;
+        }else{
+            throw new Error("cardAddInfo is undefined");
+        }
     }
 
-    public set cardAddInfo(cardAddInfo: tCardAddInfo) {
+    public setCardAddInfo(cardAddInfo: tCardAddInfo) {
         this.diImages[eAssetFolderType.BACK].setTexture(getLoadKey(eAssetFolderType.BACK, cardAddInfo.image_id.back));
         this.diImages[eAssetFolderType.FRONT].setTexture(getLoadKey(eAssetFolderType.FRONT, cardAddInfo.image_id.front));
         this.diImages[eAssetFolderType.REAL].setTexture(getLoadKey(eAssetFolderType.REAL, cardAddInfo.image_id.real));
@@ -79,7 +82,11 @@ export class CardComponent extends Phaser.GameObjects.Container {
         this.setSize(size.width, size.height);
 
         // 初期状態を設定
-        this.status = CardStatus.BACK;
+        if(cardInfo.place.area === eCardArea.DISCARD){
+            this.status = CardStatus.VANISHED;
+        }else{
+            this.status = CardStatus.BACK;
+        }
 
         // インタラクティブの設定
         this.setInteractive();

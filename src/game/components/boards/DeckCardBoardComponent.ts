@@ -1,23 +1,22 @@
-import Phaser from 'phaser';
+import { PhaseManager } from '@/game/managers/PhaseManager';
 import { CardComponent, CardStatus } from '../CardComponent';
+import { AbstractCardBoardComponent } from './AbstractCardBoardComponent';
 
-export class DeckCardBoardComponent {
-  private scene: Phaser.Scene;
-  private cardComponents: CardComponent[];
-  private x: number;
-  private y: number;
+export class DeckCardBoardComponent extends AbstractCardBoardComponent {
+  public x: number;
+  public y: number;
 
   constructor(
-    scene: Phaser.Scene,
+    phaseManager: PhaseManager,
     x: number,
     y: number,
     cardComponents: CardComponent[]
   ) {
-    this.scene = scene;
+    super(phaseManager, cardComponents);
     this.x = x;
     this.y = y;
-    this.cardComponents = cardComponents;
     this.displayCards();
+    this.drawBorder();
   }
 
   private displayCards(): void {
@@ -29,36 +28,27 @@ export class DeckCardBoardComponent {
     });
   }
 
-  public updateVisualizer(cardComponents: CardComponent[]): void {
-    this.cardComponents = cardComponents;
+  protected drawBorder(): void {
+    if (this.cardComponents.length === 0) return;
+
+    this.borderGraphics.clear();
+    this.borderGraphics.lineStyle(4, 0x00ff00, 1);
+    this.borderGraphics.strokeRect(
+      this.x - this.cardComponents[0].size.width / 2,
+      this.y - this.cardComponents[0].size.height / 2,
+      this.cardComponents[0].size.width,
+      this.cardComponents[0].size.height
+    );
+  }
+
+  public layoutCards(): void {
     this.displayCards();
   }
 
-  // // 一番上のカードを表にする
-  // public async flipTopCardAsync(gameClient: GameClient): Promise<void> {
-  //   if (this.cards.length > 0) {
-  //     const topCard = this.cards[this.cards.length - 1];
-  //     const cardFullInfo = await gameClient.fetchSpecificCardFullInfo(topCard.cardKnownInfo.idFrontBack)
-  //     topCard.cardFullInfo = cardFullInfo;
-  //     topCard.status = MemoryCardStatus.FRONT
-  //   }
-  // }
-
-  // // 一番上のカードを裏にする
-  // public flipTopCardBack(): void {
-  //   if (this.cards.length > 0) {
-  //     const topCard = this.cards[this.cards.length - 1];
-  //     topCard.status = MemoryCardStatus.BACK
-  //   }
-  // }
-
-  // 一番上のカードを取り除く
-  public removeTopCard(): CardComponent | undefined {
-    if (this.cardComponents.length > 0) {
-      const topCard = this.cardComponents.pop();
-      topCard?.setInteractive(false);
-      return topCard;
+  public getTopCardId(): string|undefined {
+    if (this.cardComponents.length === 0) {
+      return undefined;
     }
-    return undefined;
+    return this.cardComponents[this.cardComponents.length - 1].cardInfo.idFrontBack;
   }
 }
