@@ -18,7 +18,8 @@ export const cardAddInfoNull: tCardAddInfo = {
   },
   cost: numNull(),
   attack: numNull(),
-  spell_id: undefined,
+  ability: undefined,
   isSpellable: false,
+  isSummonable: false,
   nowAttack: numNull()
 }

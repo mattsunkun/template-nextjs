@@ -1,4 +1,3 @@
-import { numNull } from "@/utils/const";
 import { CardStatus, eCardArea, eWho } from "../clients/GameClient";
 import { CardComponent } from "../components/CardComponent";
 import { spell } from "../spells/Spell";
@@ -64,7 +63,7 @@ export class CSSPhaseManager extends AbstractSubManager {
             // 呪文の効果発動
             const spellId = addInfo.ability;
             if(spellId){
-                await spell(this.phaseManager, spellId);
+                await spell(this.phaseManager, spellId, isMyTurn);
             }
 
             // カードの移動
@@ -210,7 +209,10 @@ export class CSSPhaseManager extends AbstractSubManager {
     }
 
     private isSelectOk(card: CardComponent): boolean {
-        if(this.phase === eCSSPhase.SUMMON && (card.addInfo.nowAttack ?? numNull()) <= 0){
+        if(this.phase === eCSSPhase.COST && !card.isSummonable){
+            return false;
+        }
+        if(this.phase === eCSSPhase.SUMMON && !card.isSummonable){
             return false;
         }
         if(this.phase === eCSSPhase.SPELL && !card.addInfo.isSpellable){

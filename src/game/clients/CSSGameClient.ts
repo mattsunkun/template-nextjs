@@ -1,7 +1,7 @@
+import { sleep } from "@/utils/functions";
 import { LocalServer } from "../servers/LocalServer";
 import { AbstractSubClient } from "./AbstractSubClient";
 import { GameClient, tGameClient } from "./GameClient";
-
 export class CSSGameClient extends AbstractSubClient {
 
     constructor(gameClient: GameClient, idGameClient: tGameClient, localServer?: LocalServer) {
@@ -10,8 +10,9 @@ export class CSSGameClient extends AbstractSubClient {
 
     public async fetchOpponentCostCardsAsync(): Promise<string[]> {
         if(this.localServer) {
+            await sleep(this.localServer.sleepTime);
             const handCards = this.gameClient.phaseManager.hand.get(false).cardComponents;
-            const costCards = handCards.filter(card => card.addInfo && card.addInfo.cost > 0);
+            const costCards = handCards.filter(card => card.isSummonable);
             if (costCards.length === 0) return [];
             
             // コストが最も大きいカードを選択
@@ -29,6 +30,7 @@ export class CSSGameClient extends AbstractSubClient {
 
     public async fetchOpponentSummonCardsAsync(): Promise<string[]> {
         if(this.localServer) {
+            await sleep(this.localServer.sleepTime);
             const handCards = this.gameClient.phaseManager.hand.get(false).cardComponents;
             const cost = this.gameClient.phaseManager.getCostLabel(false).cost;
             
@@ -55,6 +57,7 @@ export class CSSGameClient extends AbstractSubClient {
 
     public async fetchOpponentSpellCardsAsync(): Promise<string[]> {
         if(this.localServer) {
+            await sleep(this.localServer.sleepTime);
             const handCards = this.gameClient.phaseManager.hand.get(false).cardComponents;
             const cost = this.gameClient.phaseManager.getCostLabel(false).cost;
             

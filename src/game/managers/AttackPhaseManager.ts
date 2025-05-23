@@ -171,7 +171,7 @@ export class AttackPhaseManager extends AbstractSubManager {
                     ["little", "gigant"].includes(this.phaseManager.getCardComponent(defendIdFrontBack).addInfo.ability ?? "") && 
                     ["little", "gigant"].includes(this.phaseManager.getCardComponent(attackIdFrontBack).addInfo.ability ?? "")
             ){
-                    await spell(this.phaseManager, "giant-killing");
+                    await spell(this.phaseManager, "giant-killing", isMyTurn);
                     damage = 0;
                 }
 

@@ -116,7 +116,7 @@ export class MemoryPhaseManager extends AbstractSubManager {
                     if(card.addInfo.isSpellable && 
                         card.addInfo.ability &&
                         ((place.who === eWho.MY) === isMe)){
-                        await spell(this.phaseManager, card.addInfo.ability);
+                        await spell(this.phaseManager, card.addInfo.ability, isMe);
                     }
                     place.area = eCardArea.TOMB;
                     place.cardStatus = CardStatus.VANISHED;

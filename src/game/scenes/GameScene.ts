@@ -1,6 +1,6 @@
 import { loadCardAssetsByType } from '@/utils/functions';
 import { Scene } from 'phaser';
-import { GameClient, tRule } from '../clients/GameClient';
+import { GameClient, tGameClient } from '../clients/GameClient';
 import { PhaseManager } from '../managers/PhaseManager';
 import { myMemoryCardInfos, mySpellCardInfos, opponentMemoryCardInfos, opponentSpellCardInfos } from '../servers/CardData';
 import { eAssetFolderType } from '../servers/LocalServer';
@@ -13,15 +13,15 @@ export class GameScene extends Scene
     private phaseManager: PhaseManager;
 
     private gameClient: GameClient;
-    private rule: tRule;
+    private idGameClient: tGameClient;
 
     constructor()
     {
         super('GameScene');
     }
 
-    async init(gameClient: GameClient, rule: tRule) {
-        this.gameClient = gameClient;
+    async init(idGameClient:tGameClient) {
+        this.idGameClient = idGameClient;
     }
 
     preload(){
@@ -53,7 +53,7 @@ export class GameScene extends Scene
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor(0x000000);
 
-        this.phaseManager = new PhaseManager(this, this.gameClient);
+        this.phaseManager = new PhaseManager(this, this.idGameClient);
         await this.phaseManager.create();
     }
 }

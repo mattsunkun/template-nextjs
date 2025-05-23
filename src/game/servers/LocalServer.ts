@@ -10,7 +10,7 @@ export enum eAssetFolderType {
 }
 
 // export const __startPhase = eGamePhase.COST_SUMMON_SPELL;
-export const __FULL_DEBUG = true;
+export const __FULL_DEBUG = false;
 export let debug = true;
 export let _isMyTurn = true;
 export let _shuffle = false;
@@ -22,6 +22,7 @@ export type tCardRawInfo = {
   front: string;
   back: string;
   real: string;
+  cost:number;
 }
 
 
@@ -74,9 +75,9 @@ export class LocalServer {
 
           place: {
             who: isMyCard ? eWho.MY : eWho.OPPONENT,
-            area: eCardArea.HAND, 
+            area: eCardArea.DECK, 
             position: -1, 
-            cardStatus: CardStatus.STAND
+            cardStatus: CardStatus.BACK
           },
 
           debug: debug ? {
@@ -92,7 +93,7 @@ export class LocalServer {
               real: `${spellCardInfo.real}`,
               back: `${spellCardInfo.back}`
             },
-            cost: 0,
+            cost: spellCardInfo.cost,
             attack: 0,
             ability: spellCardInfo.real,
             isSpellable: true,

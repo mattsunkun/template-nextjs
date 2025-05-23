@@ -1,3 +1,4 @@
+import { numNull } from "@/utils/const";
 import { tCardRawInfo } from "./LocalServer";
 
 export const myMemoryBack = "normal.1";
@@ -76,7 +77,7 @@ export const myMemoryCardInfos: tCardRawInfo[] = [
     back: myMemoryBack, 
     real: "normal.heart.13"
   }
-];
+].map(card => ({...card, cost: numNull()}));
 
 export const opponentMemoryCardInfos: tCardRawInfo[] = [
   {
@@ -149,78 +150,77 @@ export const opponentMemoryCardInfos: tCardRawInfo[] = [
     back: opponentMemoryBack, 
     real: "normal.spade.13"
   }
-];
+].map(card => ({...card, cost: numNull()}));
 
+const defenceCostDiff = 2;
+const attackCostDiff = 2;
+const scanCostDiff = -100;
 export const mySpellCardInfos: tCardRawInfo[] = [
   {
     front: "shuffle.0",
     back: mySpellBack,
-    real: "shuffle.0"
+    real: "shuffle.0", 
+    cost: 3,
   }, 
   {
     front: "defence.+.2",
     back: mySpellBack,
-    real: "defence.+.2"
+    real: "defence.+.2",
+    cost: 2+defenceCostDiff,
   },
   {
     front: "defence.+.5",
     back: mySpellBack,
-    real: "defence.+.5"
-  },
-  {
-    front: "cost.-.-1",
-    back: mySpellBack,
-    real: "cost.-.-1"
-  },
-  {
-    front: "cost.-.-1",
-    back: mySpellBack,
-    real: "cost.-.-1"
-  },
-  {
-    front: "cost.+.10",
-    back: mySpellBack,
-    real: "cost.+.10"
+    real: "defence.+.5",
+    cost: 5+defenceCostDiff,
   },
   {
     front: "attack.-.5",
     back: mySpellBack,
-    real: "attack.-.5"
+    real: "attack.-.5",
+    cost: -5+attackCostDiff,
   },
   {
     front: "attack.+.3",
     back: mySpellBack,
-    real: "attack.+.3"
+    real: "attack.+.3",
+    cost: 3+attackCostDiff,
   },
   {
     front: "attack.+.10",
     back: mySpellBack,
-    real: "attack.+.10"
+    real: "attack.+.10",
+    cost: 10+attackCostDiff,
   },
   {
     front: "scan.1.0",
     back: mySpellBack,
-    real: "scan.1.0"
+    real: "scan.1.0",
+    cost: 1+scanCostDiff,
   },
   {
     front: "scan.3.3",
     back: mySpellBack,
-    real: "scan.3.3"
+    real: "scan.3.3",
+    cost: 3+scanCostDiff,
   },
   {
     front: "scan.5.0",
     back: mySpellBack,
-    real: "scan.5.0"
+    real: "scan.5.0",
+    cost: 5+scanCostDiff,
   },
   {
     front: "scan.7.0",
     back: mySpellBack,
-    real: "scan.7.0"
+    real: "scan.7.0",
+    cost: 7+scanCostDiff,
   },
   {
     front: "scan.10.10",
     back: mySpellBack,
-    real: "scan.10.10"
+    real: "scan.10.10",
+    cost: 10+scanCostDiff,
   }
   
 ];
@@ -229,72 +229,68 @@ export const opponentSpellCardInfos: tCardRawInfo[] = [
   {
     front: "shuffle.0",
     back: opponentSpellBack,
-    real: "shuffle.0"
+    real: "shuffle.0",
+    cost: 3,
   }, 
   {
     front: "defence.+.2",
     back: opponentSpellBack,
-    real: "defence.+.2"
+    real: "defence.+.2",
+    cost: 2+defenceCostDiff,
   },
   {
     front: "defence.+.5",
     back: opponentSpellBack,
-    real: "defence.+.5"
-  },
-  {
-    front: "cost.-.-1",
-    back: opponentSpellBack,
-    real: "cost.-.-1"
-  },
-  {
-    front: "cost.-.-1",
-    back: opponentSpellBack,
-    real: "cost.-.-1"
-  },
-  {
-    front: "cost.+.10",
-    back: opponentSpellBack,
-    real: "cost.+.10"
+    real: "defence.+.5",
+    cost: 5+defenceCostDiff,
   },
   {
     front: "attack.-.5",
     back: opponentSpellBack,
-    real: "attack.-.5"
+    real: "attack.-.5",
+    cost: -5+attackCostDiff,
   },
   {
     front: "attack.+.3",
     back: opponentSpellBack,
-    real: "attack.+.3"
+    real: "attack.+.3",
+    cost: 3+attackCostDiff,
   },
   {
     front: "attack.+.10",
     back: opponentSpellBack,
-    real: "attack.+.10"
+    real: "attack.+.10",
+    cost: 10+attackCostDiff,
   },
   {
     front: "scan.1.0",
     back: opponentSpellBack,
-    real: "scan.1.0"
+    real: "scan.1.0",
+    cost: 1+scanCostDiff,
   },
   {
     front: "scan.3.3",
     back: opponentSpellBack,
-    real: "scan.3.3"
+    real: "scan.3.3",
+    cost: 3+scanCostDiff,
   },
   {
     front: "scan.5.0",
     back: opponentSpellBack,
-    real: "scan.5.0"
+    real: "scan.5.0",
+    cost: 5+scanCostDiff,
   },
   {
     front: "scan.7.0",
     back: opponentSpellBack,
-    real: "scan.7.0"
+    real: "scan.7.0",
+    cost: 7+scanCostDiff,
   },
   {
     front: "scan.10.10",
     back: opponentSpellBack,
-    real: "scan.10.10"
+    real: "scan.10.10",
+    cost: 10+scanCostDiff,
   }
   
 ];

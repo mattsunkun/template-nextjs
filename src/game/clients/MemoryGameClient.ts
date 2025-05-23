@@ -1,4 +1,4 @@
-import { unexpectError } from "@/utils/functions";
+import { sleep, unexpectError } from "@/utils/functions";
 import { LocalServer } from "../servers/LocalServer";
 import { AbstractSubClient } from "./AbstractSubClient";
 import { GameClient, tGameClient } from "./GameClient";
@@ -15,6 +15,7 @@ export class MemoryGameClient extends AbstractSubClient {
   
   async receiveOpponentCardFullInfoAsync(): Promise<string> {
     if(this.localServer) {
+      await sleep(this.localServer.sleepTime);
       if(this.pairIdFrontBacks.length === 2){
         const pairIdFrontBack = this.pairIdFrontBacks[1];
         this.pairIdFrontBacks = [];
