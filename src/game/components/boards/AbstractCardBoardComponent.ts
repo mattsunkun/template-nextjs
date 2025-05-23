@@ -9,7 +9,7 @@ export abstract class AbstractCardBoardComponent extends Phaser.GameObjects.Cont
   protected _isInteractive: boolean = false;
 
   public get cardComponents(): CardComponent[] {
-    return this._cardComponents.sort((a, b) => a.cardInfo.place.position - b.cardInfo.place.position);
+    return this._cardComponents.sort((a, b) => a.place.position - b.place.position);
   }
 
   constructor(
@@ -48,7 +48,7 @@ export abstract class AbstractCardBoardComponent extends Phaser.GameObjects.Cont
   }
 
   public removeCard(idFrontBack: string): void {
-    const index = this._cardComponents.findIndex(card => card.cardInfo.idFrontBack === idFrontBack);
+    const index = this._cardComponents.findIndex(card => card.idFrontBack === idFrontBack);
     if (index !== -1) {
       this._cardComponents.splice(index, 1);
       this.layoutCards();
@@ -61,5 +61,13 @@ export abstract class AbstractCardBoardComponent extends Phaser.GameObjects.Cont
     const card = this.phaseManager.getCardComponent(idFrontBack);
     this._cardComponents.push(card);
     this.layoutCards();
+  }
+
+  public getLeastPosition(): number {
+    let pos = 0;
+    while(this.cardComponents.find(card => card.place.position === pos)){
+      pos++;
+    }
+    return pos;
   }
 }

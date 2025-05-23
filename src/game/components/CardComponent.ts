@@ -1,27 +1,81 @@
 import { eAssetFolderType } from "@/game/servers/LocalServer";
+import { numNull } from "@/utils/const";
 import { getLoadKey } from "@/utils/functions";
 import { tSize } from "@/utils/types";
-import { eCardArea, tCardAddInfo, tCardInfo } from "../clients/GameClient";
-export enum CardStatus {
-  FRONT = "front",
-  BACK = "back",
-  REAL = "real",
-  VANISHED = "vanished"
-}
+import { CardStatus, eWho, tCardAddInfo, tCardInfo, tPlace } from "../clients/GameClient";
 
 export class CardComponent extends Phaser.GameObjects.Container {
     private diImages: Record<eAssetFolderType, Phaser.GameObjects.Image>;
     private label: Phaser.GameObjects.Text;
-    private _status: CardStatus;
+    private nowAttackLabel: Phaser.GameObjects.Text;
+    private costLabel: Phaser.GameObjects.Text;
     private _size: tSize;
     private _cardInfo: tCardInfo;
 
-
-    public get cardInfo(): tCardInfo {
-        return this._cardInfo;
+    public get idFrontBack(): string {
+        return this._cardInfo.idFrontBack;
     }
 
-    public get cardAddInfo(): tCardAddInfo {
+    public get place(): tPlace {
+        return this._cardInfo.place;
+    }
+
+    public set _place(place: tPlace) {
+        // console.log("placeupdate",place)
+        this._cardInfo.place = place;
+        switch(place.cardStatus) {
+            case CardStatus.FRONT:
+                this.diImages[eAssetFolderType.FRONT].setVisible(true);
+                this.diImages[eAssetFolderType.BACK].setVisible(false);
+                this.diImages[eAssetFolderType.REAL].setVisible(false);
+                this.label.setVisible(false);
+                this.nowAttackLabel.setVisible(true);
+                this.costLabel.setVisible(true);
+                break;
+            case CardStatus.BACK:
+                this.diImages[eAssetFolderType.FRONT].setVisible(false);
+                this.diImages[eAssetFolderType.BACK].setVisible(true);
+                this.diImages[eAssetFolderType.REAL].setVisible(false);
+                this.label.setVisible(false);
+                this.nowAttackLabel.setVisible(false);
+                this.costLabel.setVisible(false);
+                break;
+            case CardStatus.REAL:
+                this.diImages[eAssetFolderType.FRONT].setVisible(false);
+                this.diImages[eAssetFolderType.BACK].setVisible(false);
+                this.diImages[eAssetFolderType.REAL].setVisible(true);
+                this.label.setVisible(false);
+                this.nowAttackLabel.setVisible(true);
+                this.costLabel.setVisible(false);
+                break;
+            case CardStatus.STAND:
+                const isFront = place.who === eWho.MY;
+                this.diImages[eAssetFolderType.FRONT].setVisible(isFront);
+                this.diImages[eAssetFolderType.BACK].setVisible(!isFront);
+                this.diImages[eAssetFolderType.REAL].setVisible(false);
+                this.label.setVisible(false);
+                this.nowAttackLabel.setVisible(true);
+                this.costLabel.setVisible(true);
+                break;
+            case CardStatus.VANISHED:
+                this.diImages[eAssetFolderType.FRONT].setVisible(false);
+                this.diImages[eAssetFolderType.BACK].setVisible(false);
+                this.diImages[eAssetFolderType.REAL].setVisible(false);
+                this.label.setVisible(false);
+                this.nowAttackLabel.setVisible(false);
+                this.costLabel.setVisible(false);
+                this.setInteractive(false);
+                break;
+        }
+    }
+
+    // public get cardInfo(): tCardInfo {
+    //     return this._cardInfo;
+    // }
+    
+
+
+    public get addInfo(): tCardAddInfo {
         if(this._cardInfo.addInfo){
             return this._cardInfo.addInfo;
         }else{
@@ -29,7 +83,7 @@ export class CardComponent extends Phaser.GameObjects.Container {
         }
     }
 
-    public setCardAddInfo(cardAddInfo: tCardAddInfo) {
+    public set addInfo(cardAddInfo: tCardAddInfo) {
         this.diImages[eAssetFolderType.BACK].setTexture(getLoadKey(eAssetFolderType.BACK, cardAddInfo.image_id.back));
         this.diImages[eAssetFolderType.FRONT].setTexture(getLoadKey(eAssetFolderType.FRONT, cardAddInfo.image_id.front));
         this.diImages[eAssetFolderType.REAL].setTexture(getLoadKey(eAssetFolderType.REAL, cardAddInfo.image_id.real));
@@ -40,6 +94,18 @@ export class CardComponent extends Phaser.GameObjects.Container {
         this.diImages[eAssetFolderType.REAL].setDisplaySize(this.size.width, this.size.height);
 
         this._cardInfo.addInfo = cardAddInfo;
+        this.costLabel.setText(`C: ${cardAddInfo.cost}`);
+
+        this.nowAttack = cardAddInfo.nowAttack;
+    }
+
+    public get nowAttack(): number {
+        return this.addInfo.nowAttack;
+    }
+
+    public set nowAttack(nowAttack: number) {
+        this.nowAttackLabel.setText(`A: ${nowAttack}`);
+        this.addInfo.nowAttack = nowAttack;
     }
 
     constructor(scene: Phaser.Scene, cardInfo: tCardInfo, size: tSize) {
@@ -77,16 +143,26 @@ export class CardComponent extends Phaser.GameObjects.Container {
             align: 'center',
         }).setOrigin(0.5);
 
+        this.nowAttackLabel = scene.add.text(0, -20, `A: ${numNull()}`, {
+            fontSize: '32px',
+            color: '#fff',
+            backgroundColor: '#000', 
+            align: 'center',
+        }).setOrigin(0.5);
+
+        this.costLabel = scene.add.text(0, 20, `C: ${numNull()}`, {
+            fontSize: '32px',
+            color: '#fff',
+            backgroundColor: '#000', 
+            align: 'center',
+        }).setOrigin(0.5);
+
+
         // コンテナにオブジェクトを追加
-        this.add([...Object.values(this.diImages), this.label]);
+        this.add([...Object.values(this.diImages), this.nowAttackLabel, this.label, this.costLabel]);
         this.setSize(size.width, size.height);
 
-        // 初期状態を設定
-        if(cardInfo.place.area === eCardArea.DISCARD){
-            this.status = CardStatus.VANISHED;
-        }else{
-            this.status = CardStatus.BACK;
-        }
+        this._place = cardInfo.place;
 
         // インタラクティブの設定
         this.setInteractive();
@@ -94,8 +170,6 @@ export class CardComponent extends Phaser.GameObjects.Container {
 
         scene.add.existing(this);
 
-        // ラベルを非表示にする
-        this.label.setVisible(false);
     }
 
     private setupInteractions(): void {
@@ -128,43 +202,7 @@ export class CardComponent extends Phaser.GameObjects.Container {
         this.diImages[eAssetFolderType.REAL].setDisplaySize(size.width, size.height);
     }
 
-    public get status(): CardStatus {
-        return this._status;
-    }
-
-    public set status(state: CardStatus) {
-        switch(state) {
-            case CardStatus.FRONT:
-                this.diImages[eAssetFolderType.FRONT].setVisible(true);
-                this.diImages[eAssetFolderType.BACK].setVisible(false);
-                this.diImages[eAssetFolderType.REAL].setVisible(false);
-                this.label.setVisible(false);
-                break;
-            case CardStatus.BACK:
-                this.diImages[eAssetFolderType.FRONT].setVisible(false);
-                this.diImages[eAssetFolderType.BACK].setVisible(true);
-                this.diImages[eAssetFolderType.REAL].setVisible(false);
-                this.label.setVisible(false);
-                break;
-            case CardStatus.REAL:
-                this.diImages[eAssetFolderType.FRONT].setVisible(false);
-                this.diImages[eAssetFolderType.BACK].setVisible(false);
-                this.diImages[eAssetFolderType.REAL].setVisible(true);
-                this.label.setVisible(false);
-                break;
-            case CardStatus.VANISHED:
-                this.diImages[eAssetFolderType.FRONT].setVisible(false);
-                this.diImages[eAssetFolderType.BACK].setVisible(false);
-                this.diImages[eAssetFolderType.REAL].setVisible(false);
-                this.label.setVisible(false);
-                this.setVisible(false);
-                this.setInteractive(false);
-                break;
-        }
-        this._status = state;
-    }
-
-
+    
 
 
     public setTint(color: number): void {

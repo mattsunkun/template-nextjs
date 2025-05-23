@@ -1,5 +1,6 @@
+import { numNull } from '@/utils/const';
 import { generateStringUuid, sleep, unexpectError } from '@/utils/functions';
-import { eCardArea, eWho, tCardAddInfo, tCardInfo, tGameClient, tPlace, tRule } from '../clients/GameClient';
+import { CardStatus, eCardArea, eWho, tCardAddInfo, tCardInfo, tGameClient, tPlace, tRule } from '../clients/GameClient';
 import { myMemoryCardInfos, mySpellCardInfos, opponentMemoryCardInfos, opponentSpellCardInfos } from './CardData';
 
 
@@ -9,7 +10,8 @@ export enum eAssetFolderType {
   REAL = 'real'
 }
 
-export const __FULL_DEBUG = false;
+// export const __startPhase = eGamePhase.COST_SUMMON_SPELL;
+export const __FULL_DEBUG = true;
 export const _allPairCount = 13;
 export const _disCardPairCount = 1;
 export const _usePairCount = _allPairCount - _disCardPairCount;
@@ -56,7 +58,8 @@ export class LocalServer {
           place: {
             who: isMyCard ? eWho.MY : eWho.OPPONENT,
             area: eCardArea.DECK, 
-            position: -1
+            position: -1, 
+            cardStatus: CardStatus.BACK
           },
 
           debug: {
@@ -76,7 +79,7 @@ export class LocalServer {
             attack: 0,
             spell_id: spellCardInfo.real,
             isSpellable: true,
-            isSummonable: false
+            nowAttack: 0
           }
 
         };
@@ -90,7 +93,9 @@ export class LocalServer {
     const tableCardInfos: tCardInfo[] = [];
 
     // まず全てのカードを作成
+
     for (const isMyCard of [true, false]) {
+      let position = 0;
       const tmpTableCardInfos: tCardInfo[] = [];
       for (let i = 0; i <= this.rule.allPairCount; i++) {
         const idFrontBack = generateStringUuid();
@@ -102,7 +107,8 @@ export class LocalServer {
           place: {
             who: isMyCard ? eWho.MY : eWho.OPPONENT,
             area: eCardArea.TABLE,
-            position: -1
+            position: position, 
+            cardStatus: CardStatus.BACK
           },
           debug: {
             pair_id: i, 
@@ -117,19 +123,21 @@ export class LocalServer {
             real: `${memoryCardInfo.real}`,
             back: `${memoryCardInfo.back}`
           },
-            cost: i,
-            attack: this.rule.allPairCount - i,
+            cost: this.rule.allPairCount - i,
+            attack: i,
             spell_id: (i===0) ? `shuffle.0` : undefined,
-            isSpellable: false,
-            isSummonable: true
+            isSpellable: (i===0) ? true : false,
+            nowAttack: i,
           }
         };
         tmpTableCardInfos.push(cardInfo);
+        position++;
       }
       // 0番目以外からランダムで1枚選んでdiscardに変更
       const nonZeroCards = tmpTableCardInfos.filter(card => card.debug?.pair_id !== 0);
       const randomCard = Phaser.Math.RND.pick(nonZeroCards);
       randomCard.place.area = eCardArea.DISCARD;
+      randomCard.place.cardStatus = CardStatus.VANISHED;
 
       tableCardInfos.push(...tmpTableCardInfos);
     }
@@ -191,15 +199,10 @@ export class LocalServer {
     
     console.log(this.cardInfos.map(card => card.place.position));
 
-    let cardInfosWithoutAddInfo: tCardInfo[];
-    if(__FULL_DEBUG){
-      cardInfosWithoutAddInfo = this.cardInfos.map(card => ({
+    let cardInfosWithoutAddInfo = this.cardInfos.map(card => ({
         ...card,
         addInfo: undefined
       }));
-    }else{
-      cardInfosWithoutAddInfo = this.cardInfos;
-    }
     return cardInfosWithoutAddInfo;
   }
 
@@ -362,7 +365,7 @@ debugger;
     const handCards = this.cardInfos.filter(card => 
         card.place.area === eCardArea.HAND && 
         card.place.who === eWho.OPPONENT &&
-        card.addInfo?.isSummonable === true
+        (card.addInfo?.nowAttack ?? numNull()) > 0
     );
 
     if(handCards.length > 0) {

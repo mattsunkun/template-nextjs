@@ -1,5 +1,6 @@
+import { CardStatus } from '@/game/clients/GameClient';
 import { PhaseManager } from '@/game/managers/PhaseManager';
-import { CardComponent, CardStatus } from '../CardComponent';
+import { CardComponent } from '../CardComponent';
 import { AbstractCardBoardComponent } from './AbstractCardBoardComponent';
 
 export class DeckCardBoardComponent extends AbstractCardBoardComponent {
@@ -24,7 +25,7 @@ export class DeckCardBoardComponent extends AbstractCardBoardComponent {
     this.cardComponents.forEach((card, index) => {
       card.setPosition(this.x, this.y);
       card.setDepth(index); // 後ろのカードが下に表示されるように
-      card.status = CardStatus.BACK
+      card.place.cardStatus = CardStatus.BACK
     });
   }
 
@@ -49,6 +50,6 @@ export class DeckCardBoardComponent extends AbstractCardBoardComponent {
     if (this.cardComponents.length === 0) {
       return undefined;
     }
-    return this.cardComponents[this.cardComponents.length - 1].cardInfo.idFrontBack;
+    return this.cardComponents[this.cardComponents.length - 1].idFrontBack;
   }
 }

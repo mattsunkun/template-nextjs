@@ -11,6 +11,14 @@ export enum eCardArea {
   DISCARD = "discard",
 }
 
+export enum CardStatus {
+  FRONT = "front",
+  BACK = "back",
+  REAL = "real",
+  STAND = "stand",
+  VANISHED = "vanished"
+}
+
 export enum eWho {
   MY = "my",
   OPPONENT = "opponent",
@@ -41,6 +49,7 @@ export type tPlace = {
   who: eWho;
   area: eCardArea;
   position: number;
+  cardStatus: CardStatus;
 }
 
 export type tCardAddInfo = {
@@ -55,7 +64,8 @@ export type tCardAddInfo = {
   readonly attack: number;
   readonly spell_id?: string;
   readonly isSpellable: boolean;
-  readonly isSummonable: boolean;
+
+  nowAttack: number;
 }
 
 // export type tCardFullInfo = {

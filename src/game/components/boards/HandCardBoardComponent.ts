@@ -1,7 +1,6 @@
 import { PhaseManager } from "@/game/managers/PhaseManager";
 import { tSize } from "@/utils/types";
-import Phaser from "phaser";
-import { CardComponent, CardStatus } from "../CardComponent";
+import { CardComponent } from "../CardComponent";
 import { AbstractCardBoardComponent } from "./AbstractCardBoardComponent";
 
 export type tHandTablePosition = {
@@ -28,10 +27,10 @@ export class HandCardBoardComponent extends AbstractCardBoardComponent {
         this.tablePosition = position;
         this.isOpponent = isOpponent;
         
-        // コンテナの位置を設定
-        this.setPosition(position.x, position.y);
-        // コンテナのサイズを設定
-        this.setSize(position.size.width, position.size.height);
+        // // コンテナの位置を設定
+        // this.setPosition(position.x, position.y);
+        // // コンテナのサイズを設定
+        // this.setSize(position.size.width, position.size.height);
         this.scene.add.existing(this);
         
         this.layoutCards();
@@ -50,64 +49,64 @@ export class HandCardBoardComponent extends AbstractCardBoardComponent {
     }
 
     public layoutCards(): void {
+        const cardWidth = this.phaseManager.cardComponents[0].width;
+        const totalCards = this.cardComponents.length;
+        const availableWidth = this.tablePosition.size.width;
+        const totalCardWidth = cardWidth * totalCards;
+        
+        // カード間の間隔を計算（必要に応じて負の値になることもある）
+        // console.log(availableWidth, totalCardWidth, totalCards, cardWidth);
+        // debugger
+        const cardSpacing = (availableWidth - totalCardWidth) / (totalCards - 1 || 1);
+        const startX = -this.tablePosition.size.width / 2 + cardWidth / 2;
 
-        // 新しいカードを追加
-        this.cardComponents.forEach((card, index, array) => {
+        this.cardComponents.forEach((card, index) => {
             // カードの位置を計算
-            const rotation = this.getCardRotation(index, array.length);
-            const offset = this.getCardPosition(index, array.length);
+            const xPosition = this.tablePosition.x+ startX + (index * (cardWidth + cardSpacing));
+            const yPosition = this.tablePosition.y+(this.isOpponent ? 50 : this.tablePosition.size.height - 50);
 
+            // console.log(xPosition, yPosition);
+            // debugger
             // カードの配置
-            const yPosition = this.isOpponent ? 50 : this.tablePosition.size.height - 50;
             card.setPosition(
-                this.tablePosition.size.width / 2 + offset,
+                this.tablePosition.size.width / 2 + xPosition,
                 yPosition
             );
-            card.setRotation(Phaser.Math.DegToRad(rotation));
             
             // カードの絵柄を180度回転
             if (this.isOpponent) {
-                card.setRotation(card.rotation + Math.PI);
+                card.setRotation(Math.PI);
+            } else {
+                card.setRotation(0);
             }
 
             this.add(card);
         });
     }
 
-    public updateVisualizer(cardComponents: CardComponent[]): void {
-        this._cardComponents = cardComponents;
-        this.layoutCards();
-    }
-
-    private getCardRotation(index: number, totalCards: number): number {
-        const angleStep = this.maxRotation / (totalCards - 1 || 1);
-        const baseRotation = -this.maxRotation / 2 + angleStep * index;
-        return this.isOpponent ? -baseRotation : baseRotation;
-    }
-
-    private getCardPosition(index: number, totalCards: number): number {
-        const offsetStep = this.maxOffset / (totalCards - 1 || 1);
-        return -this.maxOffset / 2 + offsetStep * index;
-    }
+    // public updateVisualizer(cardComponents: CardComponent[]): void {
+    //     this._cardComponents = cardComponents;
+    //     this.layoutCards();
+    // }
 
     public get size(): tSize {
         return this._size;
     }
 
-    public removeCards(idFrontBacks: string[]): void {
-        const remainingCards = this._cardComponents.filter(card => 
-            !idFrontBacks.some(idFrontBack => 
-                idFrontBack === card.cardInfo.idFrontBack
-            )
-        );
-        const removedCards = this._cardComponents.filter(card => 
-            idFrontBacks.some(idFrontBack => 
-                idFrontBack === card.cardInfo.idFrontBack
-            )
-        );
-        removedCards.forEach(card => card.status = CardStatus.VANISHED);
+    // public removeCards(idFrontBacks: string[]): void {
+    //     const remainingCards = this._cardComponents.filter(card => 
+    //         !idFrontBacks.some(idFrontBack => 
+    //             idFrontBack === card.idFrontBack
+    //         )
+    //     );
+    //     const removedCards = this._cardComponents.filter(card => 
+    //         idFrontBacks.some(idFrontBack => 
+    //             idFrontBack === card.idFrontBack
+    //         )
+    //     );
+    //     removedCards.forEach(card => card.place.cardStatus = CardStatus.VANISHED);
         
-        this._cardComponents = remainingCards;
-        this.layoutCards();
-    }
+    //     this._cardComponents = remainingCards;
+    //     this.layoutCards();
+    // }
 } 

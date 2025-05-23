@@ -1,5 +1,6 @@
+import { CardStatus } from '@/game/clients/GameClient';
 import { PhaseManager } from '@/game/managers/PhaseManager';
-import { CardComponent, CardStatus } from '../CardComponent';
+import { CardComponent } from '../CardComponent';
 import { AbstractCardBoardComponent } from './AbstractCardBoardComponent';
 
 export class TombCardBoardComponent extends AbstractCardBoardComponent {
@@ -21,7 +22,7 @@ export class TombCardBoardComponent extends AbstractCardBoardComponent {
     this.cardComponents.forEach((card, index) => {
         card.setPosition(0, 0);
         card.setDepth(-1); // 後ろのカードが下に表示されるように
-        card.status = CardStatus.VANISHED
+        card.place.cardStatus = CardStatus.VANISHED
         card.setInteractive(false);
         card.disableInteractive();
         card.visible = false;

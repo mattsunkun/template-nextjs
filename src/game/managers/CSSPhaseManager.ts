@@ -1,5 +1,5 @@
-import { unexpectError } from "@/utils/functions";
-import { eCardArea, eWho, tCardAddInfo } from "../clients/GameClient";
+import { numNull } from "@/utils/const";
+import { CardStatus, eCardArea, eWho, tCardAddInfo } from "../clients/GameClient";
 import { CardComponent } from "../components/CardComponent";
 import { spell } from "../spells/Spell";
 import { AbstractSubManager, eTurnStatus } from "./AbstractSubManager";
@@ -9,7 +9,6 @@ enum eCSSPhase {
     COST = "COST-Phase",
     SUMMON = "SUMMON-Phase",
     SPELL = "SPELL-Phase",
-    END = "END-Phase"
 }
 
 export class CSSPhaseManager extends AbstractSubManager {
@@ -46,15 +45,23 @@ export class CSSPhaseManager extends AbstractSubManager {
                 opponentCards = await this.phaseManager.gameClient.cssGameClient.fetchOpponentSpellCardsAsync();
                 break;
         }
-        return opponentCards.map(card => card.idFrontBack);
+        // this.setSelectedIdFrontBacks(opponentCards.map(card => card.idFrontBack), false);
+        opponentCards.forEach(card => {
+            this.selectCard(this.phaseManager.getCardComponent(card.idFrontBack), false);
+        });
+        return this.selectedIdFrontBacks;
             
     }
 
     protected async applyChooseAsync(idFrontBacks: string[], isMyTurn:boolean): Promise<eTurnStatus>{
+        console.log(idFrontBacks, isMyTurn)
+        // debugger
         // const hand = isMyTurn ? this.phaseManager.myHand : this.phaseManager.opponentHand;
         const costLabel = this.phaseManager.getCostLabel(isMyTurn);
         for(const idFrontBack of idFrontBacks){
-            const addInfo = this.phaseManager.getCardComponent(idFrontBack).cardAddInfo;
+            
+            console.log(idFrontBack)
+            const addInfo = this.phaseManager.getCardComponent(idFrontBack).addInfo;
             // コスト消費
             costLabel.applyPartialCostChange(addInfo.cost);
             // 呪文の効果発動
@@ -64,17 +71,25 @@ export class CSSPhaseManager extends AbstractSubManager {
             }
 
             // カードの移動
+            const cardArea = this.phase === eCSSPhase.SUMMON ?
+                eCardArea.SUMMON : 
+                eCardArea.TOMB;
+            const cardStatus = this.phase === eCSSPhase.SUMMON ? 
+                CardStatus.FRONT : 
+                CardStatus.VANISHED
+            // const cardArea = eCardArea.TABLE;
+            // const cardStatus = CardStatus.STAND;
+                const position = this.phaseManager.getBoardComponent(cardArea, isMyTurn ? eWho.MY : eWho.OPPONENT).getLeastPosition()
+                console.log(position)
             this.phaseManager.updateCardPlace(
                 idFrontBack, {
-                    area: this.phase === eCSSPhase.SUMMON ?
-                     eCardArea.SUMMON : 
-                     eCardArea.TOMB, 
+                    area: cardArea,
                     who: isMyTurn ? eWho.MY : eWho.OPPONENT, 
-                    position: this.phaseManager.myHand.length
+                    position: position,
+                    cardStatus: cardStatus,
                 }
             );
             this.deselectCard(this.phaseManager.getCardComponent(idFrontBack));
-            
         }
 
        return eTurnStatus.DONE;
@@ -90,12 +105,12 @@ export class CSSPhaseManager extends AbstractSubManager {
         return this._selectedIdFrontBacks;
     }
 
-    private set selectedIdFrontBacks(newIdFrontBacks: string[]) {
-        console.log(this.costSign, this.phase)
-        this.phaseManager.getCostLabel(this.phaseManager.isMeFirst).addCostChange(-this.costSign * this._selectedIdFrontBacks.reduce((sum, idFrontBack) => sum + (this.phaseManager.getCardComponent(idFrontBack).cardAddInfo.cost), 0));
+    private setSelectedIdFrontBacks(newIdFrontBacks: string[], isMe: boolean) {
+      
+        this.phaseManager.getCostLabel(isMe).setCostChange(0);
 
         this._selectedIdFrontBacks = newIdFrontBacks
-        this.phaseManager.myCostLabel.addCostChange(+this.costSign * this._selectedIdFrontBacks.reduce((sum, idFrontBack) => sum + (this.phaseManager.getCardComponent(idFrontBack).cardAddInfo.cost), 0));
+        this.phaseManager.getCostLabel(isMe).setCostChange(this.costSign * this.selectedIdFrontBacks.reduce((sum, idFrontBack) => sum + (this.phaseManager.getCardComponent(idFrontBack).addInfo.cost), 0));
     }
 
 
@@ -103,7 +118,7 @@ export class CSSPhaseManager extends AbstractSubManager {
         super(phaseManager);
         
         this.createNextButton();
-        this._phase = eCSSPhase.END;
+        this._phase = eCSSPhase.COST;
     }
 
     createNextButton(){
@@ -132,6 +147,7 @@ export class CSSPhaseManager extends AbstractSubManager {
     }
 
     async startPhaseAsync(){
+        let turnStatus = eTurnStatus.AGAIN;
         for(const phase of [
             eCSSPhase.COST,
             eCSSPhase.SUMMON,
@@ -143,23 +159,29 @@ export class CSSPhaseManager extends AbstractSubManager {
                 !this.phaseManager.isMeFirst
             ]){
 
-                let turnStatus = eTurnStatus.AGAIN;
+                turnStatus = eTurnStatus.AGAIN;
                 while(turnStatus === eTurnStatus.AGAIN){
                     turnStatus = await this.eachTurnAsync(isMyTurn);
                 }
-                if(turnStatus === eTurnStatus.DONE){
-                    await this.endPhaseAsync();
+                if(turnStatus === eTurnStatus.END){
+                    break;
                 }
             }
+            if(turnStatus === eTurnStatus.END){
+                break;
+            }
         }
+
+        await this.endPhaseAsync();
     }
 
     protected async myChooseAsync(): Promise<string[]>{
+        const isMe = true;
         this.nextButton.setVisible(true);
-        this.phaseManager.myHand.isInteractive = true;
+        this.phaseManager.hand.get(isMe).isInteractive = true;
 
         // 自分のカードだけ設定する。
-        this.phaseManager.cardComponents.forEach(card => {
+        this.phaseManager.hand.get(isMe).cardComponents.forEach(card => {
             card.removeAllListeners('pointerdown');
             card.on('pointerdown', () => this.handleCardClick(card));
         });
@@ -178,23 +200,24 @@ export class CSSPhaseManager extends AbstractSubManager {
         });
 
         this.nextButton.setVisible(false);
-        this.phaseManager.myHand.isInteractive = false;
+        this.phaseManager.hand.get(isMe).isInteractive = false;
         return this.selectedIdFrontBacks;
         
     }
 
     async endPhaseAsync(){
         this.nextButton.setVisible(false);
-        this.phaseManager.myHand.isInteractive = false;
+        const isMe = true;
+        this.phaseManager.hand.get(isMe).isInteractive = false;
         this.phaseManager.nextTurn();
 
     }
 
     private isSelectOk(card: CardComponent): boolean {
-        if(this.phase === eCSSPhase.SUMMON && !card.cardInfo.addInfo?.isSummonable){
+        if(this.phase === eCSSPhase.SUMMON && (card.addInfo.nowAttack ?? numNull()) <= 0){
             return false;
         }
-        if(this.phase === eCSSPhase.SPELL && !card.cardInfo.addInfo?.isSpellable){
+        if(this.phase === eCSSPhase.SPELL && !card.addInfo.isSpellable){
             return false;
         }
         switch(this.phase){
@@ -202,18 +225,15 @@ export class CSSPhaseManager extends AbstractSubManager {
                 return (this.selectedIdFrontBacks.length === 0)
             case eCSSPhase.SUMMON:
             case eCSSPhase.SPELL:
-                const totalCost = this.selectedIdFrontBacks.reduce((sum, idFrontBack) => sum + (this.phaseManager.getCardComponent(idFrontBack).cardAddInfo.cost), 0);
-                const newTotalCost = totalCost + (card.cardAddInfo.cost);
-                return (0<= this.phaseManager.myCostLabel.cost + this.costSign*newTotalCost);
-            case eCSSPhase.END:
-                debugger;
-                unexpectError("END-Phase is not selectable");
-                return false;
+                const totalCost = this.selectedIdFrontBacks.reduce((sum, idFrontBack) => sum + (this.phaseManager.getCardComponent(idFrontBack).addInfo.cost), 0);
+                const newTotalCost = totalCost + (card.addInfo.cost);
+                return (0<= this.phaseManager.costLabel.get(true).cost + this.costSign*newTotalCost);
+            
         }
     }
 
     private handleCardClick(card: CardComponent): void {
-        const index = this.selectedIdFrontBacks.indexOf(card.cardInfo.idFrontBack);
+        const index = this.selectedIdFrontBacks.indexOf(card.idFrontBack);
         
         if (index !== -1) {
             // カードが既に選択されている場合は選択解除
@@ -221,28 +241,26 @@ export class CSSPhaseManager extends AbstractSubManager {
         } else {
             // 新しいカードを選択
             if (this.isSelectOk(card)) {
-                this.selectCard(card);
+                this.selectCard(card, true);
             }
         }
     }
 
 
-    private selectCard(card: CardComponent): void {
-        // debugger
-        this.selectedIdFrontBacks = [...this.selectedIdFrontBacks, card.cardInfo.idFrontBack];
+    private selectCard(card: CardComponent, isMe: boolean): void {
+        this.setSelectedIdFrontBacks([...this.selectedIdFrontBacks, card.idFrontBack], isMe);
         // カードを少し上に移動
         card.setY(card.y - 20);
         // 選択状態の視覚的フィードバック
 
-        console.log(card.cardInfo.addInfo?.cost);
         card.setTint(0xffff00);
         // コストの変化を追加
     }
 
     private deselectCard(card: CardComponent): void {
-        const index = this.selectedIdFrontBacks.indexOf(card.cardInfo.idFrontBack);
+        const index = this.selectedIdFrontBacks.indexOf(card.idFrontBack);
         if (index !== -1) {
-            this.selectedIdFrontBacks = this.selectedIdFrontBacks.filter(id => id !== card.cardInfo.idFrontBack);
+            this.setSelectedIdFrontBacks(this.selectedIdFrontBacks.filter(id => id !== card.idFrontBack), this.phaseManager.isMeFirst);
             // カードを元の位置に戻す
             card.setY(card.y + 20);
             // 選択状態の解除

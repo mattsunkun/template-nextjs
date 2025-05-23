@@ -74,7 +74,7 @@ export class TableCardBoardComponent extends AbstractCardBoardComponent {
     const mids = 4
     const pad = 2;
     for (const card of this.cardComponents) {
-      let pos = card.cardInfo.place.position;
+      let pos = card.place.position;
       let col = pos % this.cols;
       if(mids<=col){
           col += pad;

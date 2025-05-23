@@ -6,8 +6,11 @@ import { SummonCardBoardComponent } from '../components/boards/SummonCardBoardCo
 import { TableCardBoardComponent } from '../components/boards/TableCardBoardComponent';
 import { TombCardBoardComponent } from '../components/boards/TombCardBoardComponent';
 import { CardComponent } from '../components/CardComponent';
+import { AttackedLabelComponent } from '../components/css/AttackedLabelComponent';
 import { CostLabelComponent } from '../components/css/CostLabelComponent';
+import { InstanceSelector } from '../components/utils/InstanceSelector';
 import { TextLabel } from '../components/utils/TextLabel';
+import { __FULL_DEBUG } from '../servers/LocalServer';
 import { AttackPhaseManager } from './AttackPhaseManager';
 import { CSSPhaseManager } from './CSSPhaseManager';
 import { MemoryPhaseManager } from './MemoryPhaseManager';
@@ -33,17 +36,27 @@ export class PhaseManager {
 
 
     public table: TableCardBoardComponent;
-    public myDeck: DeckCardBoardComponent;
-    public opponentDeck: DeckCardBoardComponent;
-    public myHand: HandCardBoardComponent;
-    public opponentHand: HandCardBoardComponent;
-    public myCostLabel: CostLabelComponent;
-    public opponentCostLabel: CostLabelComponent;
-    public nextButton: Phaser.GameObjects.Text;
-    public mySummon: SummonCardBoardComponent;
-    public opponentSummon: SummonCardBoardComponent;
-    public myTomb: TombCardBoardComponent;
-    public opponentTomb: TombCardBoardComponent;
+    public deck: InstanceSelector<DeckCardBoardComponent>;
+    public hand: InstanceSelector<HandCardBoardComponent>;
+    public summon: InstanceSelector<SummonCardBoardComponent>;
+    public tomb: InstanceSelector<TombCardBoardComponent>;
+    public costLabel: InstanceSelector<CostLabelComponent>;
+    public attackedLabel: InstanceSelector<AttackedLabelComponent>;
+
+
+    
+    private myDeck: DeckCardBoardComponent;
+    private opponentDeck: DeckCardBoardComponent;
+    private myHand: HandCardBoardComponent;
+    private opponentHand: HandCardBoardComponent;
+    private myCostLabel: CostLabelComponent;
+    private opponentCostLabel: CostLabelComponent;
+    private mySummon: SummonCardBoardComponent;
+    private opponentSummon: SummonCardBoardComponent;
+    private myTomb: TombCardBoardComponent;
+    private opponentTomb: TombCardBoardComponent;
+    private myAttackedLabel: AttackedLabelComponent;
+    private opponentAttackedLabel: AttackedLabelComponent;
     
   
     private textLabelPhase: TextLabel;
@@ -62,10 +75,25 @@ export class PhaseManager {
         this.gameClient = gameClient;
     }
 
+    private createAttackedLabel(){
+      const screenWidth = this.scene.scale.width;
+      const screenHeight = this.scene.scale.height;
+
+      const xMid = screenWidth / 2;
+      const xDiff = (screenWidth) / 3;
+      const y = screenHeight*2/5;
+      
+
+      this.myAttackedLabel = new AttackedLabelComponent(this.scene, xMid - xDiff, y, '与えたダメージ\n');
+      this.opponentAttackedLabel = new AttackedLabelComponent(this.scene, xMid + xDiff, y, '喰らったダメージ\n');
+
+      this.attackedLabel = new InstanceSelector({my: this.myAttackedLabel, opponent: this.opponentAttackedLabel});
+    }
+
     private createTable(){
       const tableCardComponent = this.cardComponents
           .filter((cardComponent: CardComponent) => 
-            cardComponent.cardInfo.place.area === eCardArea.TABLE
+            cardComponent.place.area === eCardArea.TABLE
           )
 
       this.table = new TableCardBoardComponent(
@@ -81,7 +109,7 @@ export class PhaseManager {
       const deckCardComponent = this.cardComponents
           .filter(
             (cardComponent: CardComponent) => 
-              cardComponent.cardInfo.place.area === eCardArea.DECK
+              cardComponent.place.area === eCardArea.DECK
           )
           
 
@@ -92,22 +120,23 @@ export class PhaseManager {
       this.myDeck = new DeckCardBoardComponent(
         this, deckX, myDeckY, deckCardComponent
         .filter(
-          card => card.cardInfo.place.who === eWho.MY
+          card => card.place.who === eWho.MY
         )
       );
       this.opponentDeck = new DeckCardBoardComponent(
         this, deckX, opponentDeckY, deckCardComponent
         .filter(
-          card => card.cardInfo.place.who === eWho.OPPONENT
+          card => card.place.who === eWho.OPPONENT
         )
       );
 
+      this.deck = new InstanceSelector({my: this.myDeck, opponent: this.opponentDeck});
     }
 
     private createHand(){
       const handCardComponent = this.cardComponents
           .filter((cardComponent: CardComponent) => 
-            cardComponent.cardInfo.place.area === eCardArea.HAND
+            cardComponent.place.area === eCardArea.HAND
           )
 
           const screenWidth = this.scene.scale.width;
@@ -125,14 +154,16 @@ export class PhaseManager {
       const myHandPosition = {x: myX, y: myY, size:{width: handTableWidth, height: handTableHeight}};
       const opponentHandPosition = {x: opponentX, y: opponentY, size:{width: handTableWidth, height: handTableHeight}};
       
-      this.myHand = new HandCardBoardComponent(this, handCardComponent.filter(card => card.cardInfo.place.who === eWho.MY), myHandPosition, false);
-      this.opponentHand = new HandCardBoardComponent(this, handCardComponent.filter(card => card.cardInfo.place.who === eWho.OPPONENT), opponentHandPosition, true);
+      this.myHand = new HandCardBoardComponent(this, handCardComponent.filter(card => card.place.who === eWho.MY), myHandPosition, false);
+      this.opponentHand = new HandCardBoardComponent(this, handCardComponent.filter(card => card.place.who === eWho.OPPONENT), opponentHandPosition, true);
+
+      this.hand = new InstanceSelector({my: this.myHand, opponent: this.opponentHand});
     }
 
     private createSummon(): void {
       const summonCardComponent = this.cardComponents
           .filter((cardComponent: CardComponent) => 
-            cardComponent.cardInfo.place.area === eCardArea.SUMMON
+            cardComponent.place.area === eCardArea.SUMMON
 
           )
 
@@ -156,7 +187,7 @@ export class PhaseManager {
 
       this.mySummon = new SummonCardBoardComponent(
         this,
-        summonCardComponent.filter(card => card.cardInfo.place.who === eWho.MY),
+        summonCardComponent.filter(card => card.place.who === eWho.MY),
         3,
         6,
         10,
@@ -167,7 +198,7 @@ export class PhaseManager {
 
       this.opponentSummon = new SummonCardBoardComponent(
         this,
-        summonCardComponent.filter(card => card.cardInfo.place.who === eWho.OPPONENT),
+        summonCardComponent.filter(card => card.place.who === eWho.OPPONENT),
         2,
         6,
         10,
@@ -175,17 +206,21 @@ export class PhaseManager {
         opponentX,
         opponentY
       );
+
+      this.summon = new InstanceSelector({my: this.mySummon, opponent: this.opponentSummon});
     }
 
     private createTomb(){
       const tombCardComponent = this.cardComponents
           .filter((cardComponent: CardComponent) => 
-            cardComponent.cardInfo.place.area === eCardArea.TOMB
+            cardComponent.place.area === eCardArea.TOMB || 
+            cardComponent.place.area === eCardArea.DISCARD
           )
 
-      this.myTomb = new TombCardBoardComponent(this, tombCardComponent.filter(card => card.cardInfo.place.who === eWho.MY));
-      this.opponentTomb = new TombCardBoardComponent(this, tombCardComponent.filter(card => card.cardInfo.place.who === eWho.OPPONENT));
-          
+      this.myTomb = new TombCardBoardComponent(this, tombCardComponent.filter(card => card.place.who === eWho.MY));
+      this.opponentTomb = new TombCardBoardComponent(this, tombCardComponent.filter(card => card.place.who === eWho.OPPONENT));
+
+      this.tomb = new InstanceSelector({my: this.myTomb, opponent: this.opponentTomb});
     }
 
     private createCostLabel(){
@@ -195,10 +230,12 @@ export class PhaseManager {
       const handTableHeight = 300;
       const myX = (screenWidth - handTableWidth) / 2;
       const myY = screenHeight - handTableHeight;
+      const xOffset = 200;
         // コスト表示のラベルを追加
-        this.myCostLabel = new CostLabelComponent(this.scene, myX - 50, myY + handTableHeight/2, '自分のコスト\n');
-        this.opponentCostLabel = new CostLabelComponent(this.scene, myX + handTableWidth + 50, myY + handTableHeight/2, '相手のコスト\n');
+        this.myCostLabel = new CostLabelComponent(this.scene, myX - xOffset, myY + handTableHeight/2, '自分のコスト\n');
+        this.opponentCostLabel = new CostLabelComponent(this.scene, myX + handTableWidth + xOffset, myY + handTableHeight/2, '相手のコスト\n');
 
+        this.costLabel = new InstanceSelector({my: this.myCostLabel, opponent: this.opponentCostLabel});
     }
 
     async create(){
@@ -218,7 +255,14 @@ export class PhaseManager {
 
       const cardSize = { width: 100, height: 150 };
 
-        this.cardComponents = cardInfos.map(card => new CardComponent(this.scene, card, cardSize));
+      this.cardComponents = cardInfos.map(card => new CardComponent(this.scene, card, cardSize));
+      if(__FULL_DEBUG){
+       
+        this.cardComponents.forEach(async card => {
+          card.addInfo = await this.gameClient.fetchSpecificCardFullInfoAsync(card.idFrontBack);
+        });
+      }
+    
 
         this.createDeck();
         this.createTable();
@@ -226,13 +270,24 @@ export class PhaseManager {
         this.createSummon();
         this.createCostLabel();
         this.createTomb();
+        this.createAttackedLabel();
 
+
+        // this.mySummon.addCard(this.cardComponents[0].idFrontBack);
+
+        // this.cardComponents.forEach(card => {
+        //   const place = {...card.place};
+        //   place.area = eCardArea.SUMMON;
+        //   place.cardStatus = CardStatus.FRONT;
+        //   // place.who = eWho.OPPONENT;
+        //   this.updateCardPlace(card.idFrontBack, place);
+        // });
 
         this.currentPhase = eGamePhase.COST_SUMMON_SPELL;
     }
 
     public saveCardAddInfo(cardAddInfo: tCardAddInfo){
-      this.getCardComponent(cardAddInfo.idFrontBack).setCardAddInfo(cardAddInfo);
+      this.getCardComponent(cardAddInfo.idFrontBack).addInfo = cardAddInfo;
     
     }
 
@@ -241,7 +296,7 @@ export class PhaseManager {
     }
 
     public getCardComponent(cardIdFrontBack: string): CardComponent {
-      const cardComponent = this.cardComponents.find(card => card.cardInfo.idFrontBack === cardIdFrontBack);
+      const cardComponent = this.cardComponents.find(card => card.idFrontBack === cardIdFrontBack);
       if(cardComponent){
         return cardComponent;
       }else{
@@ -254,16 +309,16 @@ export class PhaseManager {
 
       switch(area){
         case eCardArea.DECK:
-          return who === eWho.MY ? this.myDeck : this.opponentDeck;
+          return this.deck.get(who === eWho.MY);
         case eCardArea.HAND:
-          return who === eWho.MY ? this.myHand : this.opponentHand;
+          return this.hand.get(who === eWho.MY);
         case eCardArea.TABLE:
           return this.table;
         case eCardArea.SUMMON:
-          return who === eWho.MY ? this.mySummon : this.opponentSummon;
+          return this.summon.get(who === eWho.MY);
         case eCardArea.DISCARD:
         case eCardArea.TOMB:
-          return who === eWho.MY ? this.myTomb : this.opponentTomb;
+          return this.tomb.get(who === eWho.MY);
         default:
           debugger
           throw new Error("Invalid area");
@@ -272,9 +327,9 @@ export class PhaseManager {
 
     public async updateCardPlace(cardIdFrontBack: string, place: tPlace) {
       const cardComponent = this.getCardComponent(cardIdFrontBack);
-      this.getBoardComponent(cardComponent.cardInfo.place.area, cardComponent.cardInfo.place.who).removeCard(cardIdFrontBack);
+      this.getBoardComponent(cardComponent.place.area, cardComponent.place.who).removeCard(cardIdFrontBack);
 
-      cardComponent.cardInfo.place = place;
+      cardComponent._place = place;
 
       this.getBoardComponent(place.area, place.who).addCard(cardIdFrontBack);
       
@@ -326,7 +381,7 @@ export class PhaseManager {
   }
 
   public nextTurn():boolean {
-
+debugger
     this.isMeFirst = !this.isMeFirst;
 
     if(this.rule.isMyTurn === this.isMeFirst) {

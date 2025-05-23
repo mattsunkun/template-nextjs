@@ -65,7 +65,7 @@ export class CostLabelComponent extends Phaser.GameObjects.Container {
             if(this.costChange > 0){
                 sign = '+';
             }else if(this.costChange < 0){
-                sign = '-';
+                sign = '';
             }else{
                 sign = '';
             }

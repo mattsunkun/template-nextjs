@@ -53,6 +53,7 @@ export class SummonCardBoardComponent extends AbstractCardBoardComponent {
     public layoutCards() {
       if (this.cardComponents.length === 0) return;
   
+    //   debugger
       const cardWidth = this.cardComponents[0].size.width;
       const cardHeight = this.cardComponents[0].size.height;
   
@@ -65,7 +66,7 @@ export class SummonCardBoardComponent extends AbstractCardBoardComponent {
       const startY = this._y - this._size.height / 2 + cardHeight / 2;
       const mid = 3
       for (const card of this.cardComponents) {
-        let pos = card.cardInfo.place.position;
+        let pos = card.place.position;
         let col = pos % this.cols;
         if(mid<=col){
             col += this.pad;
@@ -75,6 +76,9 @@ export class SummonCardBoardComponent extends AbstractCardBoardComponent {
         const x = startX + col * (cardWidth + this.margin);
         const y = startY + row * (cardHeight + this.margin);
   
+        // console.log(pos, x, y, card.place, card.addInfo.pair_id)
+        // console.log(card.place)
+        // debugger
         card.setPosition(x, y);
       }
     }

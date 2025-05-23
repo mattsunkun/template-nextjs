@@ -1,10 +1,10 @@
 import { sleep } from "@/utils/functions";
-import { eCardArea, eWho } from "../clients/GameClient";
+import { CardStatus, eCardArea, eWho } from "../clients/GameClient";
 import { DeckCardBoardComponent } from "../components/boards/DeckCardBoardComponent";
-import { CardComponent, CardStatus } from "../components/CardComponent";
+import { CardComponent } from "../components/CardComponent";
+import { spell } from "../spells/Spell";
 import { AbstractSubManager, eTurnStatus } from "./AbstractSubManager";
 import { PhaseManager } from "./PhaseManager";
-
 
 export class MemoryPhaseManager extends AbstractSubManager {
     
@@ -52,9 +52,11 @@ export class MemoryPhaseManager extends AbstractSubManager {
         
         // カードを表にする
         const cardComponent = this.phaseManager.getCardComponent(idFrontBack);
-        cardComponent.status = CardStatus.FRONT;
+        const place = {...cardComponent.place};
+        place.cardStatus = CardStatus.FRONT;
+        this.phaseManager.updateCardPlace(cardComponent.idFrontBack, place);
 
-        this.selectedCardId.push(cardComponent.cardInfo.idFrontBack);
+        this.selectedCardId.push(cardComponent.idFrontBack);
         // 2枚選択された場合
         if (this.selectedCardId.length === this.pairAmount) {    
             // 判定    
@@ -79,6 +81,8 @@ export class MemoryPhaseManager extends AbstractSubManager {
         return eTurnStatus.AGAIN;
     }
 
+    private _flag:number = 0;
+
     private async checkMatchAsync(isMe:boolean):Promise<boolean>{
         // カードの照合
         // 全てのカードコンポーネントに対して処理
@@ -89,36 +93,49 @@ export class MemoryPhaseManager extends AbstractSubManager {
         // マッチング判定のため少し待機
         await sleep(500);
 
-        let isMatch = false;
+        let isAgain = false;
 
         // 全てのカードのpair_idが同じか確認
-        const firstPairId = selectedCards[0].cardAddInfo.pair_id;
+        const firstPairId = selectedCards[0].addInfo.pair_id;
 
         //揃った時、
-        if (selectedCards.every(card => card.cardInfo.addInfo?.pair_id === firstPairId)) {
-            isMatch = true;
+        if (selectedCards.every(card => card.addInfo.pair_id === firstPairId)) {
+            isAgain = !selectedCards[0].addInfo.isSpellable;
             selectedCards.forEach(card => {
-                // 表裏を設定する。
-                card.status = isMe ? CardStatus.FRONT : CardStatus.BACK;
-            
                 // 場所を更新する。
-                this.phaseManager.updateCardPlace(card.cardInfo.idFrontBack, {
-                    area: eCardArea.HAND,
-                    who: isMe ? eWho.MY : eWho.OPPONENT,
-                    position: -1, 
-                });
+                const place = {...card.place};
+                if(isAgain){
+                    
+                    place.area = eCardArea.HAND;
+                    place.cardStatus = CardStatus.STAND;
+                    place.who = isMe ? eWho.MY : eWho.OPPONENT;
+                    this.phaseManager.updateCardPlace(card.idFrontBack, place);
+                }else{
+                    if(card.addInfo.spell_id && 
+                        ((place.who === eWho.MY) === isMe)){
+                        spell(this.phaseManager, card.addInfo.spell_id);
+                    }
+                    place.area = eCardArea.TOMB;
+                    place.cardStatus = CardStatus.VANISHED;
+                    place.who = isMe ? eWho.MY : eWho.OPPONENT;
+                    
+                    this.phaseManager.updateCardPlace(card.idFrontBack, place);
+                }
+                place.position = this._flag++;
 
             });
         } else {
             // 全てのカードをbackに戻す
             selectedCards.forEach(card => {
-                card.status = CardStatus.BACK;
+                const place = {...card.place};
+                place.cardStatus = CardStatus.BACK;
+                this.phaseManager.updateCardPlace(card.idFrontBack, place);
             });
         }
 
         // 選択したカードをクリアする。
         this.selectedCardId = [];
-        return isMatch;
+        return isAgain;
     }
 
     private async drawDeckAsync(isMe:boolean){
@@ -126,15 +143,15 @@ export class MemoryPhaseManager extends AbstractSubManager {
         const idFrontBack = deck.getTopCardId();
         if(idFrontBack !== undefined){
             const cardAddInfo = await this.phaseManager.gameClient.fetchSpecificCardFullInfoAsync(idFrontBack);
+                        // 敵のカードの情報が一瞬phaseManagerに格納されてしまう。。。
             this.phaseManager.saveCardAddInfo(cardAddInfo);
 
-            // 敵のカードの情報が一瞬phaseManagerに格納されてしまう。。。
-            this.phaseManager.getCardComponent(idFrontBack).status = (isMe) ? CardStatus.FRONT : CardStatus.BACK;
 
             this.phaseManager.updateCardPlace(idFrontBack, {
                 area: eCardArea.HAND,
                 who: (isMe) ? eWho.MY : eWho.OPPONENT,
                 position: -1, 
+                cardStatus: CardStatus.STAND
             });
         }else{
             console.log("deck is empty");
@@ -157,12 +174,12 @@ export class MemoryPhaseManager extends AbstractSubManager {
                 resolve(card);
             };
             this.phaseManager.table.cardComponents
-            .filter(card => card.status === CardStatus.BACK)
+            .filter(card => card.place.cardStatus === CardStatus.BACK)
             .forEach(card => {
                 card.once('pointerdown', () => clickHandler(card));
             });
         });
-        const cardId = card.cardInfo.idFrontBack;
+        const cardId = card.idFrontBack;
         this.phaseManager.table.isInteractive = false;
         return [cardId];
     }
