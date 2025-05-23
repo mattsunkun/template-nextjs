@@ -12,6 +12,10 @@ export class CardComponent extends Phaser.GameObjects.Container {
     private _size: tSize;
     private _cardInfo: tCardInfo;
 
+    public get pair_id(): number|undefined {
+        return this._cardInfo.addInfo?.pair_id;
+    }
+
     public get idFrontBack(): string {
         return this._cardInfo.idFrontBack;
     }
@@ -20,8 +24,16 @@ export class CardComponent extends Phaser.GameObjects.Container {
         return this._cardInfo.place;
     }
 
+    public get isSummonable(): boolean {
+        if(this._cardInfo.addInfo){ 
+            return this.addInfo.isSummonable;
+        }else{
+            console.warn("addinfo is undefined but referenced");
+            return false;
+        }
+    }
+
     public set _place(place: tPlace) {
-        // console.log("placeupdate",place)
         this._cardInfo.place = place;
         switch(place.cardStatus) {
             case CardStatus.FRONT:
@@ -29,7 +41,7 @@ export class CardComponent extends Phaser.GameObjects.Container {
                 this.diImages[eAssetFolderType.BACK].setVisible(false);
                 this.diImages[eAssetFolderType.REAL].setVisible(false);
                 this.label.setVisible(false);
-                this.nowAttackLabel.setVisible(true);
+                this.nowAttackLabel.setVisible(this.isSummonable);
                 this.costLabel.setVisible(true);
                 break;
             case CardStatus.BACK:
@@ -45,7 +57,7 @@ export class CardComponent extends Phaser.GameObjects.Container {
                 this.diImages[eAssetFolderType.BACK].setVisible(false);
                 this.diImages[eAssetFolderType.REAL].setVisible(true);
                 this.label.setVisible(false);
-                this.nowAttackLabel.setVisible(true);
+                this.nowAttackLabel.setVisible(this.isSummonable);
                 this.costLabel.setVisible(false);
                 break;
             case CardStatus.STAND:
@@ -54,7 +66,7 @@ export class CardComponent extends Phaser.GameObjects.Container {
                 this.diImages[eAssetFolderType.BACK].setVisible(!isFront);
                 this.diImages[eAssetFolderType.REAL].setVisible(false);
                 this.label.setVisible(false);
-                this.nowAttackLabel.setVisible(true);
+                this.nowAttackLabel.setVisible(this.isSummonable);
                 this.costLabel.setVisible(true);
                 break;
             case CardStatus.VANISHED:
@@ -143,14 +155,14 @@ export class CardComponent extends Phaser.GameObjects.Container {
             align: 'center',
         }).setOrigin(0.5);
 
-        this.nowAttackLabel = scene.add.text(0, -20, `A: ${numNull()}`, {
+        this.nowAttackLabel = scene.add.text(0, -60, `A: ${numNull()}`, {
             fontSize: '32px',
             color: '#fff',
             backgroundColor: '#000', 
             align: 'center',
         }).setOrigin(0.5);
 
-        this.costLabel = scene.add.text(0, 20, `C: ${numNull()}`, {
+        this.costLabel = scene.add.text(0, 60, `C: ${numNull()}`, {
             fontSize: '32px',
             color: '#fff',
             backgroundColor: '#000', 
@@ -180,7 +192,9 @@ export class CardComponent extends Phaser.GameObjects.Container {
         this.on("pointerover", () => {
             this.diImages[eAssetFolderType.BACK].alpha = 0.8;
             this.scene.input.setDefaultCursor("pointer");
-            this.label.setVisible(true);
+            if(this._cardInfo.debug){
+                this.label.setVisible(true);
+            }
         });
 
         this.on("pointerout", () => {

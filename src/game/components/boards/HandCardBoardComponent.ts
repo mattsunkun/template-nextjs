@@ -55,8 +55,6 @@ export class HandCardBoardComponent extends AbstractCardBoardComponent {
         const totalCardWidth = cardWidth * totalCards;
         
         // カード間の間隔を計算（必要に応じて負の値になることもある）
-        // console.log(availableWidth, totalCardWidth, totalCards, cardWidth);
-        // debugger
         const cardSpacing = (availableWidth - totalCardWidth) / (totalCards - 1 || 1);
         const startX = -this.tablePosition.size.width / 2 + cardWidth / 2;
 
@@ -65,8 +63,6 @@ export class HandCardBoardComponent extends AbstractCardBoardComponent {
             const xPosition = this.tablePosition.x+ startX + (index * (cardWidth + cardSpacing));
             const yPosition = this.tablePosition.y+(this.isOpponent ? 50 : this.tablePosition.size.height - 50);
 
-            // console.log(xPosition, yPosition);
-            // debugger
             // カードの配置
             card.setPosition(
                 this.tablePosition.size.width / 2 + xPosition,

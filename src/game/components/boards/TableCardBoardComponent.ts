@@ -52,8 +52,6 @@ export class TableCardBoardComponent extends AbstractCardBoardComponent {
   }
 
   public layoutCards() {
-    // console.log("layoutCards", this.cardComponents.length);
-    // if (this.cardComponents.length === 0) return;
     const cardSample = this.phaseManager.cardComponents[0];
     const cardWidth = cardSample.size.width;
     const cardHeight = cardSample.size.height;
@@ -87,4 +85,23 @@ export class TableCardBoardComponent extends AbstractCardBoardComponent {
       card.setPosition(x, y);
     }
   }
+
+  public shuffleBoard() {
+    const positions = Array.from({ length: this.cardComponents.length }, (_, i) => i);
+    
+    // Fisher-Yatesシャッフルアルゴリズムを使用
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [positions[i], positions[j]] = [positions[j], positions[i]];
+    }
+
+    // シャッフルされた位置をカードに割り当て
+    this.cardComponents.forEach((card, index) => {
+      card.place.position = positions[index];
+    });
+
+    // カードを新しい位置に配置
+    this.layoutCards();
+  }
+  
 }

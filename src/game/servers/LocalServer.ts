@@ -1,4 +1,3 @@
-import { numNull } from '@/utils/const';
 import { generateStringUuid, sleep, unexpectError } from '@/utils/functions';
 import { CardStatus, eCardArea, eWho, tCardAddInfo, tCardInfo, tGameClient, tPlace, tRule } from '../clients/GameClient';
 import { myMemoryCardInfos, mySpellCardInfos, opponentMemoryCardInfos, opponentSpellCardInfos } from './CardData';
@@ -12,12 +11,13 @@ export enum eAssetFolderType {
 
 // export const __startPhase = eGamePhase.COST_SUMMON_SPELL;
 export const __FULL_DEBUG = true;
-export const _allPairCount = 13;
+export let debug = true;
+export let _isMyTurn = true;
+export let _shuffle = false;
+export let _allPairCount = 13;
 export const _disCardPairCount = 1;
 export const _usePairCount = _allPairCount - _disCardPairCount;
 export const _spellCount = 10;
-export const _isMyTurn = true;
-export const _shuffle = false;
 export type tCardRawInfo = {
   front: string;
   back: string;
@@ -26,9 +26,26 @@ export type tCardRawInfo = {
 
 
 export class LocalServer {
+  public sleepTime = 100;
   private gameClient: tGameClient;
   private rule: tRule;
   private cardInfos: tCardInfo[];
+
+  public static setAllPairCount(count: number) {
+    _allPairCount = count;
+  }
+
+  public static setDebugMode(enabled: boolean) {
+    debug = enabled;
+  }
+
+  public static setIsMyTurn(enabled: boolean) {
+    _isMyTurn = enabled;
+  }
+
+  public static setShuffle(enabled: boolean) {
+    _shuffle = enabled;
+  }
 
   public get isMyTurn(): boolean {
     return this.rule.isMyTurn;
@@ -57,15 +74,15 @@ export class LocalServer {
 
           place: {
             who: isMyCard ? eWho.MY : eWho.OPPONENT,
-            area: eCardArea.DECK, 
+            area: eCardArea.HAND, 
             position: -1, 
-            cardStatus: CardStatus.BACK
+            cardStatus: CardStatus.STAND
           },
 
-          debug: {
+          debug: debug ? {
             pair_id: i, 
             spell_id: spellCardInfo.real
-          },
+          } : undefined,
 
           addInfo: {
             idFrontBack: idFrontBack,
@@ -77,8 +94,9 @@ export class LocalServer {
             },
             cost: 0,
             attack: 0,
-            spell_id: spellCardInfo.real,
+            ability: spellCardInfo.real,
             isSpellable: true,
+            isSummonable: false,
             nowAttack: 0
           }
 
@@ -110,10 +128,10 @@ export class LocalServer {
             position: position, 
             cardStatus: CardStatus.BACK
           },
-          debug: {
+          debug: debug ? {
             pair_id: i, 
             spell_id: (i===0) ? `shuffle.0` : undefined
-          },
+          } : undefined,
 
           addInfo: {
             idFrontBack: idFrontBack,
@@ -123,10 +141,15 @@ export class LocalServer {
             real: `${memoryCardInfo.real}`,
             back: `${memoryCardInfo.back}`
           },
-            cost: this.rule.allPairCount - i,
+            cost: this.rule.allPairCount - i + 1,
             attack: i,
-            spell_id: (i===0) ? `shuffle.0` : undefined,
+            ability:
+            (i===0) ? "shuffle" : 
+            (i===1) ? "little" :
+            (i===this.rule.allPairCount) ? "gigant" :
+            undefined,
             isSpellable: (i===0) ? true : false,
+            isSummonable: (i!==0) ? true : false,
             nowAttack: i,
           }
         };
@@ -196,8 +219,6 @@ export class LocalServer {
     }else{
       this.cardInfos = this.cardInfos.sort((a, b) => a.place.position - b.place.position);
     }
-    
-    console.log(this.cardInfos.map(card => card.place.position));
 
     let cardInfosWithoutAddInfo = this.cardInfos.map(card => ({
         ...card,
@@ -246,172 +267,6 @@ export class LocalServer {
     return this.rule;
   }
 
-  private selectedCardInfos: tCardInfo[] = [];
 
-  private firstFlag = true;
-  private secondFlag = true;
-  async fetchOpponentTableCardChoiceAsync(): Promise<string> {
-
-    await sleep(100);
-
-    if(this.firstFlag){
-      this.firstFlag = false;
-      return this.getCheatingPairCard().idFrontBack;
-    }
-    if(this.secondFlag){
-      this.secondFlag = false;
-      return this.getCheatingPairCard().idFrontBack;
-    }
-  
-// return await this.getCheatingPairCard(cardPhases);
-
-    if(Math.random() < 0.8){
-      return this.getRandomPairCard().idFrontBack;
-    }else{
-      return this.getCheatingPairCard().idFrontBack;
-    }
-  }
-
-  getRandomPairCard(): tCardAddInfo {
-    // テーブル上のカードをフィルタリング
-    const tableCards = this.cardInfos.filter(card => 
-      card.place.area === eCardArea.TABLE &&
-      !this.selectedCardInfos.some(selected => selected.idFrontBack === card.idFrontBack)
-    );
-
-    if(tableCards.length === 0) {
-      throw new Error("テーブル上に選択可能なカードがありません");
-    }
-
-    // ランダムに1枚選択
-    const selectedCard = Phaser.Math.RND.pick(tableCards);
-    this.selectedCardInfos.push(selectedCard);
-
-    // 2枚になったら空にする。
-    if(this.selectedCardInfos.length === 2){
-      this.selectedCardInfos = [];
-    }
-
-    if(selectedCard.addInfo){
-      return selectedCard.addInfo;
-    }else{
-      throw new Error("selectedCard.addInfo is undefined");
-    }
-  }
-
-
-  getCheatingPairCard(): tCardAddInfo {
-    // テーブル上のカードのみをフィルタリング
-    const tableCards = this.cardInfos.filter(card => card.place.area === eCardArea.TABLE);
-
-    // 選択済みカードが0または1枚の場合
-    if (this.selectedCardInfos.length == 0) {
-
-      // 選択済みが0枚の場合は、新しいペアを探す
-      for (const card of tableCards) {
-        const pairCard = tableCards.find(c => 
-          c.addInfo?.pair_id === card.addInfo?.pair_id && //ペアを見つける
-          c.idFrontBack !== card.idFrontBack // 自分自身はペアにできない
-        );
-
-        if (pairCard) {
-          this.selectedCardInfos.push(card);
-          this.selectedCardInfos.push(pairCard);
-          if(card.addInfo){
-            return card.addInfo;
-          }else{
-            unexpectError("card.addInfo is undefined");
-          }
-        }
-      }
-    }
-
-    // 2枚選択済みの場合は2枚目を返して配列をクリア
-    else if (this.selectedCardInfos.length === 2) {
-      const secondCard = this.selectedCardInfos[1];
-      this.selectedCardInfos = [];
-      if(secondCard.addInfo){
-        return secondCard.addInfo;
-      }else{
-        unexpectError("secondCard.addInfo is undefined");
-      }
-    }
-debugger;
-
-    unexpectError("getCheatingPairCard is undefined");
-    throw new Error("getCheatingPairCard is undefined");
-  }
-
-
-  public async fetchOpponentCostCardsAsync(): Promise<tCardAddInfo[]> {
-    const handCards = this.cardInfos.filter(card => 
-        card.place.area === eCardArea.HAND && 
-        card.place.who === eWho.OPPONENT
-    );
-
-    if(handCards.length > 0) {
-        const selectedCard = Phaser.Math.RND.pick(handCards);
-        if(selectedCard.addInfo){
-          return [selectedCard.addInfo];
-        }else{
-          return [];
-        }
-    }
-    return [];
-  }
-
-
-  public async fetchOpponentSummonCardsAsync(): Promise<tCardAddInfo[]> {
-    const handCards = this.cardInfos.filter(card => 
-        card.place.area === eCardArea.HAND && 
-        card.place.who === eWho.OPPONENT &&
-        (card.addInfo?.nowAttack ?? numNull()) > 0
-    );
-
-    if(handCards.length > 0) {
-        const selectedCard = Phaser.Math.RND.pick(handCards);
-        if(selectedCard.addInfo){
-          return [selectedCard.addInfo];
-        }else{
-          return [];
-        }
-    }
-    return [];
-  }
-
-
-  public async fetchOpponentSpellCardsAsync(): Promise<tCardAddInfo[]> {
-    const handCards = this.cardInfos.filter(card => 
-        card.place.area === eCardArea.HAND && 
-        card.place.who === eWho.OPPONENT &&
-        card.addInfo?.isSpellable === true
-    );
-
-    if(handCards.length > 0) {
-        const selectedCard = Phaser.Math.RND.pick(handCards);
-        if(selectedCard.addInfo){
-          return [selectedCard.addInfo];
-        }else{
-          return [];
-        }
-    }
-    return [];
-  }
-
-  // public async postMyCostCardAsync(cardIdFrontBacks: string[]): Promise<void> {
-  //   const cardMyCostCards = this.cardFullInfos.filter(card => !cardIdFrontBacks.includes(card.idFrontBack));
-  //   if(cardMyCostCards){
-  //     cardMyCostCards.forEach(card => {
-  //       const cardPhase = this.cardPhases.find(phase => phase.info.cardFullInfo?.idFrontBack === card.idFrontBack);
-  //       if(cardPhase){
-  //         cardPhase.status = eGamePhase.GAME_END;
-  //       }else{
-  //         unexpectError("cardPhase is undefined");
-  //       }
-  //     });
-  //   }else{
-  //     unexpectError("cardMyCostCards is empty");
-  //   }
-  // }
 
 }

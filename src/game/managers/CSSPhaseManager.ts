@@ -1,5 +1,5 @@
 import { numNull } from "@/utils/const";
-import { CardStatus, eCardArea, eWho, tCardAddInfo } from "../clients/GameClient";
+import { CardStatus, eCardArea, eWho } from "../clients/GameClient";
 import { CardComponent } from "../components/CardComponent";
 import { spell } from "../spells/Spell";
 import { AbstractSubManager, eTurnStatus } from "./AbstractSubManager";
@@ -33,39 +33,36 @@ export class CSSPhaseManager extends AbstractSubManager {
     }
 
     protected async opponentChooseAsync(): Promise<string[]> {
-        let opponentCards: tCardAddInfo[] = [];
+        let idFrontBacks: string[] = [];
         switch(this.phase){
             case eCSSPhase.COST:
-                opponentCards = await this.phaseManager.gameClient.cssGameClient.fetchOpponentCostCardsAsync();
+                idFrontBacks = await this.phaseManager.gameClient.cssGameClient.fetchOpponentCostCardsAsync();
                 break;
             case eCSSPhase.SUMMON:
-                opponentCards = await this.phaseManager.gameClient.cssGameClient.fetchOpponentSummonCardsAsync();
+                idFrontBacks = await this.phaseManager.gameClient.cssGameClient.fetchOpponentSummonCardsAsync();
                 break;
             case eCSSPhase.SPELL:
-                opponentCards = await this.phaseManager.gameClient.cssGameClient.fetchOpponentSpellCardsAsync();
+                idFrontBacks = await this.phaseManager.gameClient.cssGameClient.fetchOpponentSpellCardsAsync();
                 break;
         }
         // this.setSelectedIdFrontBacks(opponentCards.map(card => card.idFrontBack), false);
-        opponentCards.forEach(card => {
-            this.selectCard(this.phaseManager.getCardComponent(card.idFrontBack), false);
+        idFrontBacks.forEach(idFrontBack => {
+            this.selectCard(this.phaseManager.getCardComponent(idFrontBack), false);
         });
         return this.selectedIdFrontBacks;
             
     }
 
     protected async applyChooseAsync(idFrontBacks: string[], isMyTurn:boolean): Promise<eTurnStatus>{
-        console.log(idFrontBacks, isMyTurn)
-        // debugger
-        // const hand = isMyTurn ? this.phaseManager.myHand : this.phaseManager.opponentHand;
+        
         const costLabel = this.phaseManager.getCostLabel(isMyTurn);
         for(const idFrontBack of idFrontBacks){
             
-            console.log(idFrontBack)
             const addInfo = this.phaseManager.getCardComponent(idFrontBack).addInfo;
             // コスト消費
             costLabel.applyPartialCostChange(this.costSign*addInfo.cost);
             // 呪文の効果発動
-            const spellId = addInfo.spell_id;
+            const spellId = addInfo.ability;
             if(spellId){
                 await spell(this.phaseManager, spellId);
             }
@@ -77,10 +74,8 @@ export class CSSPhaseManager extends AbstractSubManager {
             const cardStatus = this.phase === eCSSPhase.SUMMON ? 
                 CardStatus.FRONT : 
                 CardStatus.VANISHED
-            // const cardArea = eCardArea.TABLE;
-            // const cardStatus = CardStatus.STAND;
+            
                 const position = this.phaseManager.getBoardComponent(cardArea, isMyTurn ? eWho.MY : eWho.OPPONENT).getLeastPosition()
-                console.log(position)
             this.phaseManager.updateCardPlace(
                 idFrontBack, {
                     area: cardArea,
@@ -158,6 +153,7 @@ export class CSSPhaseManager extends AbstractSubManager {
                 this.phaseManager.isMeFirst, 
                 !this.phaseManager.isMeFirst
             ]){
+                this.phaseManager.isMyTurn = isMyTurn;
 
                 turnStatus = eTurnStatus.AGAIN;
                 while(turnStatus === eTurnStatus.AGAIN){

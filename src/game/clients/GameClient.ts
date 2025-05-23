@@ -1,4 +1,6 @@
+import { PhaseManager } from "../managers/PhaseManager";
 import { LocalServer } from "../servers/LocalServer";
+import { AttackClient } from "./AttackClient";
 import { CSSGameClient } from "./CSSGameClient";
 import { MemoryGameClient } from "./MemoryGameClient";
 
@@ -62,8 +64,9 @@ export type tCardAddInfo = {
   readonly image_id: tImageId;
   readonly cost: number;
   readonly attack: number;
-  readonly spell_id?: string;
+  readonly ability?: string;
   readonly isSpellable: boolean;
+  readonly isSummonable: boolean;
 
   nowAttack: number;
 }
@@ -119,29 +122,38 @@ export type tRule = {
 export type tGameClient = {
   roomId: string;
   myId: string;
-  opponentId: string;
-  
+  opponentId: string;  
 }
 
 export class GameClient {
+  public phaseManager:PhaseManager;
   private idGameClient: tGameClient;
   private _isMyTurn: boolean;
   private localServer: LocalServer;
 
+  public attackClient: AttackClient;
   public memoryGameClient: MemoryGameClient;
   public cssGameClient: CSSGameClient;  
 
-  constructor(idGameClient: tGameClient) {
+  constructor(idGameClient: tGameClient, phaseManager: PhaseManager) {
     this.idGameClient = idGameClient;
+
+    this.phaseManager = phaseManager;
 
     if(this.idGameClient.roomId.substring(0, 6) === "local-") {
       this.localServer = new LocalServer(this.idGameClient);
     }
 
-    this.memoryGameClient = new MemoryGameClient(this.idGameClient, this.localServer);
-    this.cssGameClient = new CSSGameClient(this.idGameClient, this.localServer);
+    this.attackClient = new AttackClient(this, this.idGameClient, this.localServer);
+    this.memoryGameClient = new MemoryGameClient(this, this.idGameClient, this.localServer);
+    this.cssGameClient = new CSSGameClient(this, this.idGameClient, this.localServer);
 
   }
+
+  // public setPhaseManager(phaseManager: PhaseManager) {
+  //   debugger
+  //   this.phaseManager = phaseManager;
+  // }
 
   private async fetch(name:string): Promise<any> {
     const response = await fetch(`/api/game/${name}`);

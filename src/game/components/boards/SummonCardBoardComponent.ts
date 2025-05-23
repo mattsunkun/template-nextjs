@@ -76,9 +76,6 @@ export class SummonCardBoardComponent extends AbstractCardBoardComponent {
         const x = startX + col * (cardWidth + this.margin);
         const y = startY + row * (cardHeight + this.margin);
   
-        // console.log(pos, x, y, card.place, card.addInfo.pair_id)
-        // console.log(card.place)
-        // debugger
         card.setPosition(x, y);
       }
     }

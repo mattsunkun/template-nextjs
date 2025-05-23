@@ -1,4 +1,5 @@
-import { eCardArea, eWho, GameClient, tCardAddInfo, tPlace, tRule } from '../clients/GameClient';
+import { sleep } from '@/utils/functions';
+import { eCardArea, eWho, GameClient, tCardAddInfo, tGameClient, tPlace, tRule } from '../clients/GameClient';
 import { AbstractCardBoardComponent } from '../components/boards/AbstractCardBoardComponent';
 import { DeckCardBoardComponent } from '../components/boards/DeckCardBoardComponent';
 import { HandCardBoardComponent } from '../components/boards/HandCardBoardComponent';
@@ -23,10 +24,21 @@ export enum eGamePhase {
     ATTACK = 'attack',                      // 攻撃フェーズ
   }
 
+const __defaultPhase = eGamePhase.COST_SUMMON_SPELL;
 
 export class PhaseManager {
     private _isMeFirst: boolean;
     public _currentPhase: eGamePhase;
+    private _isMyTurn: boolean;
+
+    public get isMyTurn(): boolean {
+      return this._isMyTurn;
+    }
+
+    public set isMyTurn(isMyTurn: boolean) {
+      this._isMyTurn = isMyTurn;
+      this.textLabelTurn.text = isMyTurn ? '自分のターン' : '相手のターン';
+    }
 
     private phases:eGamePhase[] = [
       eGamePhase.MEMORY_GAME,
@@ -42,7 +54,7 @@ export class PhaseManager {
     public tomb: InstanceSelector<TombCardBoardComponent>;
     public costLabel: InstanceSelector<CostLabelComponent>;
     public attackedLabel: InstanceSelector<AttackedLabelComponent>;
-
+    public spellLabel: TextLabel;
 
     
     private myDeck: DeckCardBoardComponent;
@@ -65,14 +77,16 @@ export class PhaseManager {
 
     public memoryPhaseManager: MemoryPhaseManager;
     private cssPhaseManager: CSSPhaseManager;
-    private attackPhaseManager: AttackPhaseManager;
+    public attackPhaseManager: AttackPhaseManager;
     public gameClient: GameClient;
     public cardComponents: CardComponent[];
     private rule:tRule;
 
-    constructor(scene: Phaser.Scene, gameClient:GameClient) {
+    constructor(scene: Phaser.Scene, idGameClient:tGameClient) {
         this.scene = scene;
-        this.gameClient = gameClient;
+        this.gameClient = new GameClient(idGameClient, this);
+
+
     }
 
     private createAttackedLabel(){
@@ -88,6 +102,19 @@ export class PhaseManager {
       this.opponentAttackedLabel = new AttackedLabelComponent(this.scene, xMid + xDiff, y, '喰らったダメージ\n');
 
       this.attackedLabel = new InstanceSelector({my: this.myAttackedLabel, opponent: this.opponentAttackedLabel});
+    }
+
+    private createSpellLabel(){
+      const screenWidth = this.scene.scale.width;
+      const screenHeight = this.scene.scale.height;
+      const x = screenWidth / 2;
+      const y = screenHeight / 2;
+
+      this.spellLabel = new TextLabel(this.scene, x, y, '', {
+        fontSize: '64px',
+        color: '#ffffff',
+        backgroundColor: '#000000',
+      });
     }
 
     private createTable(){
@@ -238,6 +265,19 @@ export class PhaseManager {
         this.costLabel = new InstanceSelector({my: this.myCostLabel, opponent: this.opponentCostLabel});
     }
 
+    public async endGame(){
+      const attackDiff = (this.attackedLabel.get(true).attacked - this.attackedLabel.get(false).attacked)
+
+      if(attackDiff > 0){
+        this.spellLabel.txt = "自分の勝ち";
+      }else if(attackDiff < 0){
+        this.spellLabel.txt = "相手の勝ち";
+      }else{
+        this.spellLabel.txt = "引き分け";
+      }
+      await sleep(1000*1000)
+    }
+
     async create(){
          const cardInfos = await this.gameClient.fetchShuffledCardKnownInfoAsync();
         this.rule = await this.gameClient.fetchRuleAsync();
@@ -248,8 +288,7 @@ export class PhaseManager {
         this.attackPhaseManager = new AttackPhaseManager(this);
 
 
-        this.createLabelText();
-        this.isMeFirst = this.rule.isMyTurn;
+        this._isMeFirst = this.rule.isMyTurn;
   
 
 
@@ -272,6 +311,9 @@ export class PhaseManager {
         this.createTomb();
         this.createAttackedLabel();
 
+        this.createLabelText();
+        this.createSpellLabel();
+
 
         // this.mySummon.addCard(this.cardComponents[0].idFrontBack);
 
@@ -283,7 +325,7 @@ export class PhaseManager {
         //   this.updateCardPlace(card.idFrontBack, place);
         // });
 
-        this.currentPhase = eGamePhase.MEMORY_GAME;
+        this.currentPhase = __defaultPhase;
     }
 
     public saveCardAddInfo(cardAddInfo: tCardAddInfo){
@@ -340,13 +382,13 @@ export class PhaseManager {
 
   private createLabelText(){
     this.textLabelPhase = new TextLabel(this.scene, this.scene.scale.width * 2/3, 30, '', {
-        fontSize: '32px',
+        fontSize: '64px',
         color: '#ffffff',
         backgroundColor: '#000000',
     }).setOrigin(0.5);
 
     this.textLabelTurn = new TextLabel(this.scene, this.scene.scale.width * 1/3, 30, '', {
-        fontSize: '32px',
+        fontSize: '64px',
         color: '#ffffff',
         backgroundColor: '#000000',
     }).setOrigin(0.5);
@@ -354,11 +396,6 @@ export class PhaseManager {
 
   public get isMeFirst(): boolean {
     return this._isMeFirst;
-  }
-
-  public set isMeFirst(isMeFirst: boolean) {
-    this._isMeFirst = isMeFirst;
-    this.textLabelTurn.text = isMeFirst ? '自分のターン' : '相手のターン';
   }
 
   public get currentPhase(): eGamePhase {

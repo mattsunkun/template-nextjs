@@ -1,47 +1,63 @@
 import { unexpectError } from "@/utils/functions";
 import { CardStatus, eCardArea } from "../clients/GameClient";
+import { InstanceSelector } from "../components/utils/InstanceSelector";
+import { spell } from "../spells/Spell";
 import { AbstractSubManager, eTurnStatus } from "./AbstractSubManager";
 import { PhaseManager } from "./PhaseManager";
 
+export class ReadyCard {
+    public idFrontBacks: string[] = [];
+}
+
 export class AttackPhaseManager extends AbstractSubManager {
-    private myReadyCardIdFrontBacks: string[] = [];
-    private opponentReadyCardIdFrontBacks: string[] = [];
+    private _myReadyCardIdFrontBacks: ReadyCard;
+    private _opponentReadyCardIdFrontBacks: ReadyCard;
+
+    public readyCardIdFrontBacks: InstanceSelector<ReadyCard>;
 
     private currentChooseCardIdFrontBacks: string[] = [];
 
     constructor(phaseManager: PhaseManager) {
         super(phaseManager);
+        this._myReadyCardIdFrontBacks = new ReadyCard();
+        this._opponentReadyCardIdFrontBacks = new ReadyCard();
+
+        this.readyCardIdFrontBacks = new InstanceSelector({
+            my: this._myReadyCardIdFrontBacks,
+            opponent: this._opponentReadyCardIdFrontBacks
+        });
     }
 
     public async startPhaseAsync(): Promise<void> {
-        this.myReadyCardIdFrontBacks = this.phaseManager.summon.get(true).cardComponents.map(card => card.idFrontBack);
-        this.opponentReadyCardIdFrontBacks = this.phaseManager.summon.get(false).cardComponents.map(card => card.idFrontBack);
+        for(const isMyTurn of [true, false]){
+            this.readyCardIdFrontBacks.get(isMyTurn).idFrontBacks = this.phaseManager.summon.get(isMyTurn).cardComponents.map(card => card.idFrontBack);
+        }
         let turnStatus = eTurnStatus.AGAIN;
         // debugger
-        while(this.myReadyCardIdFrontBacks.length !== 0 || this.opponentReadyCardIdFrontBacks.length !== 0){
+        while(
+            this.readyCardIdFrontBacks.get(true).idFrontBacks.length !== 0 || 
+            this.readyCardIdFrontBacks.get(false).idFrontBacks.length !== 0
+        ){
             for(const isMyTurn of [
                 this.phaseManager.isMeFirst, 
                 !this.phaseManager.isMeFirst
             ]){
-                if(isMyTurn && this.myReadyCardIdFrontBacks.length === 0){
+                this.phaseManager.isMyTurn = isMyTurn;
+                if(isMyTurn && this.readyCardIdFrontBacks.get(true).idFrontBacks.length === 0){
                     continue;
                 }
-                if(!isMyTurn && this.opponentReadyCardIdFrontBacks.length === 0){
+                if(!isMyTurn && this.readyCardIdFrontBacks.get(false).idFrontBacks.length === 0){
                     continue;
                 }
 
                 // 自分の使ったカードは伏せる
                 this.phaseManager.summon.get(isMyTurn).cardComponents
-                .filter(card => !(isMyTurn ? 
-                    this.myReadyCardIdFrontBacks : 
-                    this.opponentReadyCardIdFrontBacks
-                ).includes(card.idFrontBack) )
+                .filter(card => !(this.readyCardIdFrontBacks.get(isMyTurn).idFrontBacks).includes(card.idFrontBack) )
                 .forEach(card => {
                     const place = {...card.place}
                     place.cardStatus = CardStatus.BACK;
                     this.phaseManager.updateCardPlace(card.idFrontBack, place);
                 });
-                // console.log(this.myReadyCardIdFrontBacks, this.opponentReadyCardIdFrontBacks);
                 turnStatus = await this.eachTurnAsync(isMyTurn);
                 // カードをもとに戻す
                 this.phaseManager.summon.get(isMyTurn).cardComponents
@@ -71,20 +87,19 @@ export class AttackPhaseManager extends AbstractSubManager {
 
     protected async myChooseAsync(): Promise<string[]> {
         const isMe = true;
-        // console.log(this.myReadyCardIdFrontBacks);
         this.phaseManager.summon.get(isMe).isInteractive = true;
         const idFrontBacks: string[] =[
             await this.chooseCard(true)
         ]
-        // console.log("asdf")
+        this.phaseManager.summon.get(isMe).isInteractive = false;
 
-        if(this.opponentReadyCardIdFrontBacks.length !== 0){
+        if(this.readyCardIdFrontBacks.get(false).idFrontBacks.length !== 0){
+            this.phaseManager.summon.get(!isMe).isInteractive = true;
             idFrontBacks.push(
                 await this.chooseCard(false)
             )
+            this.phaseManager.summon.get(!isMe).isInteractive = false;
         }
-
-        // console.log(idFrontBacks);
 
         return idFrontBacks;
     }
@@ -98,10 +113,8 @@ export class AttackPhaseManager extends AbstractSubManager {
                 resolve(idFrontBack);
             };
             this.phaseManager.summon.get(isMe).cardComponents
-            .filter(card => (isMe ? 
-                this.myReadyCardIdFrontBacks : 
-                this.opponentReadyCardIdFrontBacks
-            ).includes(card.idFrontBack) )
+            .filter(card => (this.readyCardIdFrontBacks.get(isMe).idFrontBacks)
+            .includes(card.idFrontBack) )
             .forEach(card => {
                 card.removeAllListeners('pointerdown');
                 card.on('pointerdown', () => clickHandler(card.idFrontBack));
@@ -112,14 +125,14 @@ export class AttackPhaseManager extends AbstractSubManager {
 
     protected async opponentChooseAsync(): Promise<string[]> {
         const idFrontBacks: string[] = [];
-        if(this.myReadyCardIdFrontBacks.length > 0) {
+        if(this.readyCardIdFrontBacks.get(false).idFrontBacks.length > 0) {
             idFrontBacks.push(
-                Phaser.Math.RND.pick(this.myReadyCardIdFrontBacks)
+                ...await this.phaseManager.gameClient.attackClient.fetchOpponentOpponentReadyCardIdFrontBacksAsync()
             );
         }
-        if(this.opponentReadyCardIdFrontBacks.length > 0) {
+        if(this.readyCardIdFrontBacks.get(true).idFrontBacks.length > 0) {
             idFrontBacks.push(
-                Phaser.Math.RND.pick(this.opponentReadyCardIdFrontBacks) 
+                ...await this.phaseManager.gameClient.attackClient.fetchOpponentMyReadyCardIdFrontBacksAsync()
             );
         }
         return idFrontBacks;
@@ -133,7 +146,7 @@ export class AttackPhaseManager extends AbstractSubManager {
                 attackIdFrontBack = idFrontBacks[0];
                 break;
             case 2:
-                if(isMyTurn === this.myReadyCardIdFrontBacks.includes(idFrontBacks[0])){
+                if(isMyTurn === this.readyCardIdFrontBacks.get(true).idFrontBacks.includes(idFrontBacks[0])){
                     attackIdFrontBack = idFrontBacks[0];
                     defendIdFrontBack = idFrontBacks[1];
                 }else{
@@ -146,15 +159,21 @@ export class AttackPhaseManager extends AbstractSubManager {
                 unexpectError("idFrontBacks.length is not 1 or 2");
                 break;
         }
-        // console.log(attackIdFrontBack, defendIdFrontBack);
-        // debugger;
 
         const attack = this.phaseManager.getCardComponent(attackIdFrontBack).nowAttack;
                 const defend = defendIdFrontBack ? 
                 this.phaseManager.getCardComponent(defendIdFrontBack).nowAttack :
                 0;
                 // debugger
-                const damage = attack - defend;
+                let damage = attack - defend;
+                if(
+                    defendIdFrontBack &&
+                    ["little", "gigant"].includes(this.phaseManager.getCardComponent(defendIdFrontBack).addInfo.ability ?? "") && 
+                    ["little", "gigant"].includes(this.phaseManager.getCardComponent(attackIdFrontBack).addInfo.ability ?? "")
+            ){
+                    await spell(this.phaseManager, "giant-killing");
+                    damage = 0;
+                }
 
                 if(damage >= 0){
                     this.phaseManager.attackedLabel.get(isMyTurn).attacked += damage;
@@ -177,11 +196,11 @@ export class AttackPhaseManager extends AbstractSubManager {
 
                 // 使用したカードをreadyCardから除外
                 if(isMyTurn){
-                    this.myReadyCardIdFrontBacks = this.myReadyCardIdFrontBacks.filter(id => id !== attackIdFrontBack);
-                    this.opponentReadyCardIdFrontBacks = this.opponentReadyCardIdFrontBacks.filter(id => id !== defendIdFrontBack);
+                    this.readyCardIdFrontBacks.get(true).idFrontBacks = this.readyCardIdFrontBacks.get(true).idFrontBacks.filter(id => id !== attackIdFrontBack);
+                    this.readyCardIdFrontBacks.get(false).idFrontBacks = this.readyCardIdFrontBacks.get(false).idFrontBacks.filter(id => id !== defendIdFrontBack);
                 }else{
-                    this.myReadyCardIdFrontBacks = this.myReadyCardIdFrontBacks.filter(id => id !== defendIdFrontBack);
-                    this.opponentReadyCardIdFrontBacks = this.opponentReadyCardIdFrontBacks.filter(id => id !== attackIdFrontBack);
+                    this.readyCardIdFrontBacks.get(true).idFrontBacks = this.readyCardIdFrontBacks.get(true).idFrontBacks.filter(id => id !== defendIdFrontBack);
+                    this.readyCardIdFrontBacks.get(false).idFrontBacks = this.readyCardIdFrontBacks.get(false).idFrontBacks.filter(id => id !== attackIdFrontBack);
                 }
         return eTurnStatus.DONE;
     }

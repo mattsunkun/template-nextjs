@@ -22,12 +22,14 @@ export class MemoryPhaseManager extends AbstractSubManager {
             this.phaseManager.isMeFirst, 
             !this.phaseManager.isMeFirst
         ]){
+            this.phaseManager.isMyTurn = isMyTurn;
             this.isFirstTime = true;
             let turnStatus = eTurnStatus.AGAIN;
             while(turnStatus === eTurnStatus.AGAIN){
                 turnStatus = await this.eachTurnAsync(isMyTurn);
             }
             if(turnStatus === eTurnStatus.END){
+                await this.phaseManager.endGame();
                 break;
             }
         }
@@ -71,7 +73,7 @@ export class MemoryPhaseManager extends AbstractSubManager {
         
             // フェーズ終了判定
             if(this.checkPhaseDone()){
-                return eTurnStatus.DONE;
+                return eTurnStatus.END;
             }else if(isMatch){
                 return eTurnStatus.AGAIN;
 
@@ -102,19 +104,19 @@ export class MemoryPhaseManager extends AbstractSubManager {
         //揃った時、
         if (selectedCards.every(card => card.addInfo.pair_id === firstPairId)) {
             isAgain = !selectedCards[0].addInfo.isSpellable;
-            selectedCards.forEach(card => {
+            for (const card of selectedCards) {
                 // 場所を更新する。
                 const place = {...card.place};
                 if(isAgain){
-                    
                     place.area = eCardArea.HAND;
                     place.cardStatus = CardStatus.STAND;
                     place.who = isMe ? eWho.MY : eWho.OPPONENT;
                     this.phaseManager.updateCardPlace(card.idFrontBack, place);
                 }else{
-                    if(card.addInfo.spell_id && 
+                    if(card.addInfo.isSpellable && 
+                        card.addInfo.ability &&
                         ((place.who === eWho.MY) === isMe)){
-                        spell(this.phaseManager, card.addInfo.spell_id);
+                        await spell(this.phaseManager, card.addInfo.ability);
                     }
                     place.area = eCardArea.TOMB;
                     place.cardStatus = CardStatus.VANISHED;
@@ -123,8 +125,7 @@ export class MemoryPhaseManager extends AbstractSubManager {
                     this.phaseManager.updateCardPlace(card.idFrontBack, place);
                 }
                 place.position = this._flag++;
-
-            });
+            }
         } else {
             // 全てのカードをbackに戻す
             selectedCards.forEach(card => {
@@ -155,7 +156,7 @@ export class MemoryPhaseManager extends AbstractSubManager {
                 cardStatus: CardStatus.STAND
             });
         }else{
-            console.log("deck is empty");
+            console.warn("deck is empty");
         }
         
     }
