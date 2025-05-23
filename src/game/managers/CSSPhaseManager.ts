@@ -63,7 +63,7 @@ export class CSSPhaseManager extends AbstractSubManager {
             console.log(idFrontBack)
             const addInfo = this.phaseManager.getCardComponent(idFrontBack).addInfo;
             // コスト消費
-            costLabel.applyPartialCostChange(addInfo.cost);
+            costLabel.applyPartialCostChange(this.costSign*addInfo.cost);
             // 呪文の効果発動
             const spellId = addInfo.spell_id;
             if(spellId){

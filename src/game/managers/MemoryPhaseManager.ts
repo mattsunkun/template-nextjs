@@ -27,10 +27,11 @@ export class MemoryPhaseManager extends AbstractSubManager {
             while(turnStatus === eTurnStatus.AGAIN){
                 turnStatus = await this.eachTurnAsync(isMyTurn);
             }
-            if(turnStatus === eTurnStatus.DONE){
-                await this.endPhaseAsync();
+            if(turnStatus === eTurnStatus.END){
+                break;
             }
         }
+        await this.endPhaseAsync();
     }
     
 

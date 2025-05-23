@@ -18,7 +18,7 @@ export class AttackPhaseManager extends AbstractSubManager {
         this.opponentReadyCardIdFrontBacks = this.phaseManager.summon.get(false).cardComponents.map(card => card.idFrontBack);
         let turnStatus = eTurnStatus.AGAIN;
         // debugger
-        while(this.myReadyCardIdFrontBacks.length !== 0 && this.opponentReadyCardIdFrontBacks.length !== 0){
+        while(this.myReadyCardIdFrontBacks.length !== 0 || this.opponentReadyCardIdFrontBacks.length !== 0){
             for(const isMyTurn of [
                 this.phaseManager.isMeFirst, 
                 !this.phaseManager.isMeFirst
@@ -146,6 +146,8 @@ export class AttackPhaseManager extends AbstractSubManager {
                 unexpectError("idFrontBacks.length is not 1 or 2");
                 break;
         }
+        // console.log(attackIdFrontBack, defendIdFrontBack);
+        // debugger;
 
         const attack = this.phaseManager.getCardComponent(attackIdFrontBack).nowAttack;
                 const defend = defendIdFrontBack ? 
@@ -155,7 +157,7 @@ export class AttackPhaseManager extends AbstractSubManager {
                 const damage = attack - defend;
 
                 if(damage >= 0){
-                    this.phaseManager.attackedLabel.get(isMyTurn).attacked = damage;
+                    this.phaseManager.attackedLabel.get(isMyTurn).attacked += damage;
                     if(defendIdFrontBack){
                         const place = {...this.phaseManager.getCardComponent(defendIdFrontBack).place}
                         place.area = eCardArea.TOMB

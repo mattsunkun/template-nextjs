@@ -29,8 +29,8 @@ export class PhaseManager {
     public _currentPhase: eGamePhase;
 
     private phases:eGamePhase[] = [
-      eGamePhase.COST_SUMMON_SPELL,
       eGamePhase.MEMORY_GAME,
+      eGamePhase.COST_SUMMON_SPELL,
       eGamePhase.ATTACK,
     ]
 
@@ -283,7 +283,7 @@ export class PhaseManager {
         //   this.updateCardPlace(card.idFrontBack, place);
         // });
 
-        this.currentPhase = eGamePhase.COST_SUMMON_SPELL;
+        this.currentPhase = eGamePhase.MEMORY_GAME;
     }
 
     public saveCardAddInfo(cardAddInfo: tCardAddInfo){
@@ -381,15 +381,17 @@ export class PhaseManager {
   }
 
   public nextTurn():boolean {
-debugger
-    this.isMeFirst = !this.isMeFirst;
+     this.nextPhase()
+     return false;
+// debugger
+//     this.isMeFirst = !this.isMeFirst;
 
-    if(this.rule.isMyTurn === this.isMeFirst) {
-      this.nextPhase();
-      return false;
-    }else{
-        return true;
-    }
+//     if(this.rule.isMyTurn === this.isMeFirst) {
+//       this.nextPhase();
+//       return false;
+//     }else{
+//         return true;
+//     }
   }
 
 
